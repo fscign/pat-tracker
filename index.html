@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PAT Tracker</title>
+<meta name="theme-color" content="#eef2f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b141b" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PAT">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout idea: one phone-width column, scoreboard numerals, tournament-blue cloth as the only strong colour */
+  --bg:#eef2f5; --surface:#ffffff; --ink:#10212f; --muted:#5a6b79; --line:#d7dfe6;
+  --accent:#0b6aa8; --accent-ink:#ffffff; --good:#1a8552; --warn:#a8700a; --bad:#c23b32;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif; --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0b141b; --surface:#13202b; --ink:#e8eff4; --muted:#8fa2b1; --line:#24384a;
+  --accent:#5db4e6; --accent-ink:#06202f; --good:#47c284; --warn:#e5ad3d; --bad:#f0756b; color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#0b141b; --surface:#13202b; --ink:#e8eff4; --muted:#8fa2b1; --line:#24384a;
+  --accent:#5db4e6; --accent-ink:#06202f; --good:#47c284; --warn:#e5ad3d; --bad:#f0756b; color-scheme:dark; }
+*{box-sizing:border-box}
+html,body{margin:0}
+body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+#app{max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:calc(84px + env(safe-area-inset-bottom));position:relative}
+main{display:flex;flex-direction:column;gap:18px;padding:4px 16px 24px}
+section{display:flex;flex-direction:column;gap:10px}
+h1,h2,h3,p{margin:0}
+h1{font-family:var(--display);font-weight:700;font-size:28px;letter-spacing:.01em;line-height:1.1;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+h3{font-family:var(--display);font-weight:600;font-size:20px;line-height:1.15}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.num,.big{font-family:var(--display);font-variant-numeric:tabular-nums;font-weight:700}
+.good{color:var(--good)} .warn{color:var(--warn)} .bad{color:var(--bad)} .dim{color:var(--muted)}
+.fine{font-size:13.5px;color:var(--muted)}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:calc(14px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 10px calc(16px + env(safe-area-inset-left));background:var(--bg)}
+.top h1{flex:1;min-width:0}
+.top:not(.home) h1{font-size:23px}
+.top.home{align-items:flex-start;padding-top:calc(22px + env(safe-area-inset-top))}
+.top.home>div{flex:1}
+.top .sub{color:var(--muted);font-size:14px;margin-top:2px}
+.back{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-size:26px;line-height:1;padding:0 0 4px}
+.step{font-family:var(--display);font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.sync{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 10px;white-space:nowrap;margin-top:4px}
+.sync{background:var(--surface);font-weight:600;color:var(--accent);padding:7px 14px;font-size:13px}
+.file-btn{display:flex;align-items:center;justify-content:center;cursor:pointer}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.test-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.test-head h3{font-size:26px}
+.test-head p{color:var(--muted);font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0}
+.stats div{border-left:2px solid var(--line);padding-left:8px}
+.stats dt{font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.stats dd{margin:0;font-family:var(--display);font-weight:700;font-size:22px;font-variant-numeric:tabular-nums}
+.btn{min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-weight:600;padding:10px 16px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--bad)} .btn.danger-solid{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn:disabled{opacity:.4;cursor:default}
+.link{background:none;border:0;color:var(--accent);font-weight:600;padding:8px 0;text-decoration:underline;text-underline-offset:3px}
+.actions{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 12px 12px 14px;min-height:60px}
+.row-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.row-main b{font-weight:600}
+.row-main small{color:var(--muted);font-size:13px}
+.row .num{font-size:24px}
+.chev{color:var(--muted);font-size:22px}
+.idx{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:700;border:1.5px solid var(--line);color:var(--muted);flex:none}
+.idx.part{border-color:var(--warn);color:var(--warn)}
+.idx.done{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tag{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.06em;border:1px solid var(--line);border-radius:6px;padding:3px 7px;white-space:nowrap;flex:none}
+.hero-num{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.big{font-size:64px;line-height:.95}
+.of{color:var(--muted);font-size:14px}
+.eyebrow{font-size:13px;color:var(--muted);letter-spacing:.04em}
+.prog{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.prog div{height:100%;background:var(--accent)}
+.hero-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;color:var(--muted);flex-wrap:wrap}
+.date input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-left:6px}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{font-size:13px;font-weight:600;border:1px solid currentColor;border-radius:999px;padding:3px 10px;color:var(--muted)}
+.pill.good{color:var(--good)} .pill.bad{color:var(--bad)} .pill.warn{color:var(--warn)}
+.seg{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
+.seg button{flex:1;min-height:40px;border:0;border-radius:9px;background:transparent;font-family:var(--display);font-weight:600;font-size:17px;color:var(--muted)}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
+.seg button.filled:not(.on){color:var(--good)}
+.part-title{font-size:22px;letter-spacing:0;text-transform:none;color:var(--ink);font-weight:700}
+.fig{margin:0;display:flex;flex-direction:column;gap:6px;align-items:center}
+.table{width:100%;max-width:330px;height:auto;display:block;filter:drop-shadow(0 8px 14px rgba(8,20,30,.28))}
+.dg-rail{font:600 10px var(--body);fill:#e8eef3;fill-opacity:.7;letter-spacing:.18em;text-anchor:middle}
+.dg-zone{font:600 13px var(--body);fill:#fff;text-anchor:middle}
+.dg-note{font:italic 500 12.5px var(--body);fill:#fff;text-anchor:middle}
+.dg-note.sm{font-size:10.5px;paint-order:stroke;stroke:#2f86bd;stroke-width:4px}
+.dg-num{font:700 12.5px var(--display);text-anchor:middle}
+.fig figcaption{width:100%;max-width:330px;display:flex;justify-content:flex-end;align-items:center;gap:10px;font-size:12.5px;color:var(--muted)}
+.legend{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.lg{display:inline-block;width:18px;height:0;border-top:3px solid #d9a521}
+.lg.cb{border-top:2px dashed var(--muted);margin-left:6px}
+.missing{background:var(--surface);border:1px dashed var(--warn);border-radius:12px;padding:14px;font-size:14.5px}
+.how ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px;font-size:15px}
+.tiprow{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--muted)}
+.tip{width:40px;height:40px;flex:none}
+.field{display:flex;flex-direction:column;gap:6px}
+.flabel{font-size:12.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:6px}
+.chip{height:44px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-family:var(--display);font-weight:600;font-size:20px;font-variant-numeric:tabular-nums;padding:0}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.sum-top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.sum-top>div:first-child{display:flex;align-items:baseline;gap:8px}
+.sum-side{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:14px;color:var(--muted)}
+.sum-side b{color:var(--ink);font-family:var(--display);font-size:18px}
+.meter{position:relative;height:12px;border-radius:99px;background:var(--line)}
+.meter .fill{position:absolute;inset:0 auto 0 0;border-radius:99px;background:currentColor}
+.tick{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+.meter-lab{position:relative;display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);height:16px}
+.meter-lab .abs{position:absolute;transform:translateX(-50%);color:var(--ink);font-weight:600}
+textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%;resize:vertical}
+.pager{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:1fr 1.2fr 1.4fr;gap:8px;max-width:480px;margin:0 auto;padding:10px 16px calc(14px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(3,1fr);max-width:480px;margin:0 auto;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tabs button{border:0;background:none;min-height:58px;font-family:var(--display);font-weight:600;font-size:17px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border-top:3px solid transparent}
+.tabs button.on{color:var(--accent);border-top-color:var(--accent)}
+.bars{display:flex;flex-direction:column;gap:4px}
+.bar{display:grid;grid-template-columns:1fr auto;gap:3px 10px;align-items:baseline;background:none;border:0;text-align:left;padding:7px 0;width:100%}
+.bar-name{font-size:14.5px}
+.bar-val{font-size:20px;display:flex;align-items:baseline;gap:6px}
+.bar-val small{font-family:var(--body);font-size:12px;font-weight:600}
+.up{color:var(--good)} .down{color:var(--bad)}
+.track{grid-column:1/-1;position:relative;height:10px}
+.track .cap{position:absolute;inset:0 auto 0 0;background:var(--line);border-radius:99px}
+.track .fill{position:absolute;inset:0 auto 0 0;background:currentColor;border-radius:99px}
+.track .tick{top:-3px;bottom:-3px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rank{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.rank li{display:flex;justify-content:space-between;gap:8px;align-items:baseline;font-size:14.5px}
+.rank li span{display:flex;flex-direction:column}
+.rank small{color:var(--muted);font-size:12.5px}
+.rank b{font-size:20px}
+.emb-track{position:relative;height:10px;border-radius:99px;background:var(--line);margin:6px 0 22px}
+.emb-fill{position:absolute;inset:0 auto 0 0;border-radius:99px;background:var(--accent)}
+.emb-track i{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--muted)}
+.emb-track i.hit{background:var(--good)}
+.emb-track i b{position:absolute;top:16px;left:50%;transform:translateX(-50%);font:600 11.5px var(--body);color:var(--muted);font-style:normal}
+.tbl{display:flex;flex-direction:column}
+.tr{display:grid;grid-template-columns:1fr 44px 44px 66px;gap:8px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:14.5px}
+.tr.th{border-top:0;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding-top:0}
+.tr .num{font-size:19px;text-align:right}
+.tr.th span:nth-child(2),.tr.th span:nth-child(3){text-align:right}
+.trend{width:100%;height:auto}
+.ax{font:500 11px var(--body);fill:var(--muted)}
+.ax.strong{font:700 14px var(--display);fill:var(--ink)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:18px;color:var(--muted)}
+.noteline{font-size:14.5px}
+.noteline b{display:block;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.scrim{position:fixed;inset:0;background:rgba(4,12,18,.55);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:480px;margin:0 auto;background:var(--surface);border-radius:18px 18px 0 0;padding:20px 16px calc(22px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:30;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;white-space:nowrap}
+@media (max-width:360px){ .big{font-size:54px} .stats{grid-template-columns:repeat(2,1fr)} .two{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ---------- Table geometry helpers (book coordinates: x 0..8 foot to head, y 0..4) ---------- */
+const F = 0.11, HB = 0.22, W1 = 0.33;
+const AIM = { TL:[.07,.07], BL:[.07,3.93], TR:[7.93,.07], BR:[7.93,3.93], TS:[4,.03], BS:[4,3.97] };
+const ob = (x,y,n) => ({ p:[x,y], n });
+const cue = (x,y) => ({ p:[x,y], t:'cue' });
+const gh = (x,y) => ({ p:[x,y], t:'ghost' });
+const pot = (b,pk) => ({ pts:[b,AIM[pk]], k:'ob', arrow:1 });
+const aimL = (c,b) => ({ pts:[c,b], k:'aim' });
+const path = (pts) => ({ pts, k:'cue', arrow:1 });
+const rect = (x1,y1,x2,y2,label,lp) => ({ poly:[[x1,y1],[x2,y1],[x2,y2],[x1,y2]], label, lp: lp || [(x1+x2)/2,(y1+y2)/2] });
+function behind(b,pk,x){ const a=AIM[pk]; const t=(x-a[0])/(b[0]-a[0]); return [x, a[1]+t*(b[1]-a[1])]; }
+function straightSet(objs,pk,xLine,nums){
+  const balls=[], lines=[];
+  objs.forEach((o,i)=>{ const c=behind(o,pk,xLine); balls.push(ob(o[0],o[1],nums?nums[i]:undefined)); balls.push(gh(c[0],c[1])); lines.push(aimL(c,o)); lines.push(pot(o,pk)); });
+  return { balls, lines };
+}
+const col = (x,y0,step,n) => Array.from({length:n},(_,i)=>[x, +(y0+i*step).toFixed(3)]);
+
+const DIAGRAMS = {
+  pat2_speed(){
+    const ys=[.5,1.5,2.5,3.5];
+    return { balls: ys.map((y,i)=>ob(6,y,i+1)),
+      zones:[rect(0,0,2,4,'Speed 1, 3',[1,2]), rect(6,0,8,4,'Speed 2, 4',[7.5,2])],
+      lines:[ path([[6,.5],[.5,.5]]), path([[6,1.5],[0,1.46],[7.5,1.38]]), path([[6,2.5],[0,2.46],[8,2.4],[.5,2.33]]), path([[6,3.5],[0,3.47],[8,3.41],[0,3.35],[7.5,3.29]]) ] };
+  },
+  pat2_straight(){
+    const balls=[], lines=[];
+    [1,2,3].forEach(y=>{ balls.push(ob(2,y-.27), ob(2,y+.27), cue(6,y)); lines.push(path([[6,y],[0,y-.03],[8,y+.02],[1.1,y+.06]])); });
+    return { balls, lines, zones:[rect(0,0,2,4,'Stop here',[.45,1.5])] };
+  },
+  pat3_straight(){
+    const balls=[], lines=[];
+    [1,2,3].forEach(y=>{ balls.push(ob(2,y-.27), ob(2,y+.27), cue(6,y)); lines.push(path([[6,y],[0,y-.04],[8,y-.01],[0,y+.03],[7.1,y+.07]])); });
+    return { balls, lines, zones:[rect(6,0,8,4,'Stop here',[7.55,1.5])] };
+  },
+  pat2_follow(){
+    const a=straightSet([[2,.2],[2,.47],[2,.74]],'TL',5,[1,2,3]), b=straightSet([[3,3.26],[3,3.53],[3,3.8]],'BL',6,[4,5,6]);
+    return { balls:[...a.balls,...b.balls], lines:[...a.lines,...b.lines], notes:[{p:[5.35,1.75],text:'cue ball on this line'},{p:[6.35,2.6],text:'cue ball on this line'}] };
+  },
+  pat2_draw(){
+    const a=straightSet([[2,.11],[2,.33],[2,.55]],'TL',5), b=straightSet([[1,3.5],[1,3.695],[1,3.89]],'BL',5);
+    return { balls:[...a.balls,...b.balls], lines:[...a.lines,...b.lines, path([[2,.55],[7.2,1.75]]), path([[1,3.5],[7.2,2.45]])], zones:[rect(6.5,0,8,4,'Position zone',[7.6,2])] };
+  },
+  pat3_draw(){
+    const a=straightSet([[4,.18],[4,.46],[4,.74]],'TL',7), b=straightSet([[4,3.26],[4,3.54],[4,3.82]],'BL',7);
+    return { balls:[...a.balls,...b.balls], lines:[...a.lines,...b.lines, path([[4,.74],[7.45,1.7]]), path([[4,3.26],[7.45,2.3]])], zones:[rect(6.5,0,8,4,'Position zone',[7.7,2])] };
+  },
+  t_follow(){
+    const a=straightSet([[4,.23],[4,.62],[4,1.0]],'TL',7), b=straightSet([[3,3.25],[3,3.53],[3,3.8]],'BL',7);
+    return { balls:[...a.balls,...b.balls], lines:[...a.lines,...b.lines] };
+  },
+  pat2_small3(){
+    const row=[.22,.59,.96,1.33,1.7].map(x=>[x,2]), column=[1.73,1.36,.98,.6,.22].map(y=>[2,y]);
+    return { balls:[...row,...column].map((p,i)=>ob(p[0],p[1],i+1)).concat([gh(.42,2.62), gh(1.4,2.78)]),
+      lines:[aimL([.42,2.62],[.22,2]), pot([.22,2],'TL'), path([[.3,2.2],[1.4,2.78]])] };
+  },
+  pat3_small5(){
+    const row=[.16,.42,.67,.93,1.19,1.45,1.7,1.96].map(x=>[x,2]), column=[1.75,1.48,1.21,.94,.67,.4,.15].map(y=>[2.2,y]);
+    return { balls:[...row,...column].map((p,i)=>ob(p[0],p[1],i+1)).concat([gh(.4,2.58), gh(1.42,2.74)]),
+      lines:[aimL([.4,2.58],[.16,2]), pot([.16,2],'TL'), path([[.26,2.2],[1.42,2.74]])] };
+  },
+  pat2_small4(){
+    const top=[.14,.41,.68,.95,1.22].map(y=>[3,y]), bot=[3.86,3.59,3.32,3.05,2.78].map(y=>[3,y]);
+    return { balls:[...top,...bot].map((p,i)=>ob(p[0],p[1],i+1)).concat([gh(2.3,.34), gh(2.2,.78), gh(2.3,3.66), gh(2.2,3.22)]),
+      lines:[aimL([2.3,.34],[3,.14]), pot([3,.14],'TR'), path([[2.85,.2],[2.2,.78]]), aimL([2.3,3.66],[3,3.86]), pot([3,3.86],'BR'), path([[2.85,3.8],[2.2,3.22]])] };
+  },
+  pat3_small6(){
+    const pts=col(3,.15,.263,15);
+    return { balls: pts.map((p,i)=>ob(p[0],p[1],i+1)).concat([gh(2.4,.36), gh(2.38,.68)]),
+      lines:[aimL([2.4,.36],pts[0]), pot(pts[0],'TR'), path([[2.85,.24],[2.38,.68]])] };
+  },
+  pat2_large3(){
+    return { balls:[ob(6,2,1),ob(6,1.555,3),ob(6,1.11,5),ob(6,.665,7),ob(6,HB,9), ob(2,2,2),ob(2,2.445,6),ob(2,2.89,4),ob(2,3.335,8),ob(2,4-HB,10), gh(5.75,2.65), gh(3.6,1.55)],
+      lines:[aimL([5.75,2.65],[6,2]), pot([6,2],'TR'), path([[5.9,2.1],[3.6,1.55]]), pot([2,2],'BL')] };
+  },
+  pat2_large4(){
+    return { balls:[ob(HB,2,10),ob(.665,2,8),ob(1.11,2,6),ob(1.555,2,4),ob(2,2,2), ob(6,2,1),ob(6.445,2,3),ob(6.89,2,5),ob(7.335,2,7),ob(8-HB,2,9), gh(5.7,2.65), gh(2.3,2.9)],
+      lines:[aimL([5.7,2.65],[6,2]), pot([6,2],'TR'), path([[5.85,2.15],[2.3,2.9]]), pot([2,2],'TL')] };
+  },
+  pat2_frozen3(){
+    return { balls:[ob(7,F,1),ob(6,F,2),ob(5,F,3),ob(1,F,4),ob(2,F,5),ob(3,F,6), cue(4,2)],
+      lines:[aimL([4,2],[6.82,.26]), pot([7,F],'TR'), pot([1,F],'TL')] };
+  },
+  pat2_frozen4(){
+    const S=[7.7,2], k=(7.7-3.3)/(7.7-4);
+    const mid=[1,2,3].map(g=>path([S,[3.3, 2+(g-2)*k]]));
+    const l1=path([S,[4.25,.02],[3.3,.57]]), l5=path([S,[4.25,3.98],[3.3,3.43]]);
+    return { balls:[ob(4,.5,2),ob(4,1.5,3),ob(4,2.5,4),ob(4,3.5,5), ob(8-F,2,1), cue(7.05,3.5)],
+      lines:[aimL([7.05,3.5],[7.82,2.12]), pot([8-F,2],'TR'), l1, ...mid, l5],
+      notes:[[.21,1],[.95,2],[2,3],[3.05,4],[3.79,5]].map(v=>({p:[3.72,v[0]],text:'lane '+v[1],small:1})) };
+  },
+  pat2_endless(){ return { balls:[ob(W1,2,5),ob(2,2,7),ob(4,2,9),ob(6,2,8),ob(8-W1,2,6), gh(.25,2.65)] }; },
+  pat2_9ball(){ return { balls:[ob(1.1,.15,3),ob(1.1,3.85,2),ob(.15,2,9),ob(2,2,5),ob(4,2,4),cue(5,2),ob(6,2,6),ob(8-F,1,7),ob(8-F,3,8),ob(7.1,3,1)] }; },
+  std1(){ return { balls:[ob(2,W1-.1), cue(1,1)], lines:[aimL([1,1],[1.86,.34]), pot([2,.2],'TR'), path([[1.88,.3],[1.95,0],[4.76,4],[6.05,2.3]])], zones:[rect(5,1,7,3,'Position zone',[6,1.35])] }; },
+  std2(){ return { balls:[ob(3,2,1), cue(4,2), ob(8-F,2,2), gh(7.6,3.4)], lines:[aimL([4,2],[3.2,2]), pot([3,2],'TL'), path([[3,2],[1.66,4],[0,2.33],[2.12,0],[6.8,4],[7.55,3.45]]), pot([8-F,2],'TR')], zones:[{poly:[[6.07,4],[8,2.1],[8,4]],label:'Position zone',lp:[7.9,3.0]}] }; },
+  std3(){ return { balls:[ob(2,2), cue(6,3.8), gh(6,3.0)], lines:[{pts:[[6,2.9],[6,3.9]],k:'range'}, aimL([6,3.8],[2.2,2.09]), pot([2,2],'TL'), path([[2.05,2.15],[1.75,3.2],[1.55,4],[1.9,2.6],[2.25,1.4]])], zones:[rect(.25,0,2.9,4,'Position zone',[.6,2.9])], notes:[{p:[.62,1.3],text:'no foot rail'}] }; },
+  std4(){ return { balls:[ob(3.85,3.75), cue(8-W1+.03,3.5)], lines:[aimL([7.73,3.5],[4.05,3.74]), pot([3.85,3.75],'BL')], zones:[rect(3.95,3,4.9,4,'Position zone',[4.42,2.82])] }; },
+  std5(){ return { balls:[ob(4,1), cue(6,1.2), gh(6,.5), gh(6,1.8)], lines:[{pts:[[6,.45],[6,1.85]],k:'range'}, aimL([6,1.2],[4.2,1.02]), pot([4,1],'TL'), path([[3.9,1.08],[2.2,1.35],[0,1.5],[6.05,2.2]])], zones:[rect(5,1.1,7.93,3.05,'Position zone',[6.6,2.75])], notes:[{p:[3.2,3.6],text:'no long rails'}] }; },
+  pat3_angle1(){
+    const b=[[4,2,3],[3.5,2,4],[3,2,5],[2.5,2,6],[2,2,7],[1.5,2,8],[1,2,9]];
+    return { balls:b.map(v=>ob(v[0],v[1],v[2])).concat([cue(6,2)]), lines:b.map(v=>pot([v[0],v[1]], v[2]%2?'TL':'BL')) };
+  },
+  pat3_angle2(){
+    const s=(c,b,pk)=>[aimL(c,b),pot(b,pk)];
+    return { balls:[ob(3,1,1),ob(5,1,2),ob(3,3,3),ob(5,3,4), gh(5,4-F),gh(3,4-F),gh(5,F),gh(3,F)],
+      lines:[...s([5,4-F],[3,1],'TL'), ...s([3,4-F],[5,1],'TR'), ...s([5,F],[3,3],'BL'), ...s([3,F],[5,3],'BR')] };
+  },
+  pat3_long1(){
+    const pts=col(6,.3,.2429,15), balls=[], lines=[];
+    pts.forEach((p,i)=>{ const pk=i<8?'TL':'BL'; const c=behind(p,pk,8-F); balls.push(ob(p[0],p[1],i+1)); balls.push({p:c,t:'ghost',small:1}); lines.push({pts:[c,AIM[pk]],k:'thin'}); });
+    return { balls, lines };
+  },
+  pat3_long2(){
+    const c=[8-F,2], b={5:[2,W1],7:[2,1.15],9:[2,2],8:[2,2.85],6:[2,4-W1]};
+    return { balls:[...Object.keys(b).map(n=>ob(b[n][0],b[n][1],+n)), cue(c[0],c[1])],
+      lines:[...Object.values(b).map(p=>({pts:[c,p],k:'thin'})), pot(b[5],'TL'),pot(b[7],'TL'),pot(b[6],'BL'),pot(b[8],'BL'),pot(b[9],'TL'),pot(b[9],'BL')] };
+  },
+  pat3_9b3(){ return { balls:[ob(1.5,F,7),ob(3,F,8),ob(.13,2,5),ob(1,2,2),ob(2,2,9),ob(4,2,4),ob(8-F,2,3),cue(4,3),ob(2,4-F,6),ob(7.84,3.84,1)] }; },
+  pat3_9b4(){ return { balls:[ob(2,1,8),ob(6,1,3),ob(.13,2,9),ob(2,2,4),cue(4,2),ob(6,2,2),ob(8-F,2,5),ob(2,4-W1,7),ob(3,4-W1,6),ob(7,4-F,1)] }; },
+  pat3_bank(){
+    const xs=[.5,1.5,2.5,3.5];
+    return { balls:[...xs.map(x=>ob(x,W1)), ...xs.map(x=>ob(x,4-W1)), gh(.55,1.1), gh(1.5,1.65)],
+      lines:[aimL([.55,1.1],[.5,.5]), {pts:[[.5,W1],[.47,0],[.1,3.88]],k:'ob',arrow:1}, path([[.6,.6],[1.5,1.65]])] };
+  },
+  pat3_rail5(){
+    const b=[[1,F],[3,F],[5,F],[7,F],[1,4-F],[2,4-F],[3,4-F],[5,4-F],[6,4-F],[7,4-F],[F,1],[F,3],[8-F,1],[8-F,2],[8-F,3]];
+    return { balls:b.map(p=>ob(p[0],p[1])).concat([cue(4,2)]), lines:[aimL([4,2],[6.85,3.72]), pot([7,4-F],'BR'), path([[6.8,3.6],[7.0,2.4]])] };
+  },
+  pat3_rail6(){
+    return { balls:[ob(1,F,1),ob(7,F,2),ob(7,4-F,3),ob(1,4-F,4),ob(5,F,5),ob(3,F,6),ob(5,4-F,7),ob(3,4-F,8),ob(F,3,9),ob(F,1,10),ob(8-F,1,11),ob(8-F,3,12),ob(5,2,13),ob(3,2,14),ob(4,2,15), gh(2.2,.45)] };
+  },
+  t_drawdose(){
+    const yl=x=>3.5-1.5*x/8, strip=(a,b,l)=>({poly:[[a,yl(a)],[b,yl(b)],[b,4],[a,4]],label:l,lp:[(a+b)/2, yl((a+b)/2)+.22]});
+    const z=[3,4,5,6,7].map((x,i)=>strip(x-.17,x+.17,String(i+1))); z.push(strip(7.62,8,'6'));
+    return { balls:[ob(1,3.84), cue(2,3.78)], lines:[aimL([2,3.78],[1.2,3.83]), pot([1,3.84],'BL'), path([[1.3,3.8],[7.75,3.7]]), {pts:[[0,3.5],[8,2]],k:'thin'}], zones:z };
+  },
+  t_criss(){
+    return { balls:[ob(.73,F,7),ob(1.5,F,9),ob(F,1.03,8),ob(1,1.03,13),ob(1.48,1.53,14),ob(2,2,15),ob(5.97,2,12),ob(6.48,2.52,11),ob(6.98,3.03,10),ob(8-F,2,6),ob(8-F,2.78,4),ob(8-F,3.53,2),ob(5.98,4-F,5),ob(6.7,4-F,3),ob(7.45,4-F,1), gh(5.77,3.2)] };
+  },
+  t_bank2(){
+    const xs=[1,1.5,2,2.5,3,5,5.5,6,6.5,7];
+    return { balls: xs.map(x=>ob(x,2)).concat([gh(2.9,2.75), gh(2.2,2.9)]), lines:[aimL([2.9,2.75],[3,2.2]), {pts:[[3,2],[3.47,0],[3.96,3.93]],k:'ob',arrow:1}, path([[2.95,2.3],[2.2,2.9]])] };
+  },
+};
+
+/* ---------- Test definitions ---------- */
+const inn = (n,max,min) => Array.from({length:n},(_,i)=>({ label:'Inning '+(i+1), max, min:min||0 }));
+const STD_SHOTS = [
+  { id:'s1', label:'1', title:'Shot 1: two rails across the table', diagram:'std1', tip:[.45,.2], how:['Object ball one ball off the long rail on the second-diamond line. Cue ball on the 1-1 spot.','After the first long rail the cue ball must cross the centre line and reach the other long rail past the side pocket. It then drifts into the zone.'] },
+  { id:'s2', label:'2', title:'Shot 2: three rails to the frozen ball', diagram:'std2', tip:[.5,0], how:['Cue ball must travel three or more rails and stop in the zone.','Only then shoot the second ball, frozen on the head rail. It must go in too for the attempt to count.'] },
+  { id:'s3', label:'3', title:'Shot 3: foot spot, hold the cue ball', diagram:'std3', tip:[-.15,-.5], how:['Object ball on the foot spot. Cue ball anywhere behind the head string.','Cue ball must not touch the foot rail, must not scratch, and must stop inside the zone.'] },
+  { id:'s4', label:'4', title:'Shot 4: jacked up off the head rail', diagram:'std4', tip:[0,-.5], how:['Object ball one to two balls from the side pocket. Cue ball one ball off the head cushion, in line with ball and corner pocket.','Cue ball must stop in the small zone by the side pocket.'] },
+  { id:'s5', label:'5', title:'Shot 5: foot rail and back', diagram:'std5', tip:[.2,.5], how:['Cue ball anywhere behind the head string. Pick the angle yourself.','Cue ball goes to the foot rail and comes back into the zone. The long rails may not be touched.'] },
+];
+const stdParts = () => STD_SHOTS.map(s=>({ ...s, fields:[{ label:'Made out of 3', max:3, min:0 }], how:[...s.how,'3 attempts. An attempt counts only if the ball is potted and the cue ball reaches the zone. After a make, play the next one from the other side of the table.'] }));
+
+const TESTS = [
+{ id:'pat2', name:'PAT 2', sub:'Playing Ability Test, level 2', mode:'sum', targetTotal:1000, cats:[
+  { id:'c1', name:'Speed Drill', target:4, factor:25, parts:[{ id:'a', title:'Speed Drill', diagram:'pat2_speed', fields:inn(3,4), how:['Four balls on the head string, one per lane.','Shoot each ball itself down the table. Ball 1 at Speed 1 (one length, stops in the foot zone), ball 2 at Speed 2 (foot rail and back to the head zone), ball 3 at Speed 3, ball 4 at Speed 4.','1 point for each ball that stops in its zone without touching a long rail or another ball. The centre of the ball decides.','3 innings, up to 4 points each.'] }] },
+  { id:'c2', name:'Stroke Straightness', target:1.5, factor:66.67, parts:[{ id:'a', title:'Straightness at Speed 3', diagram:'pat2_straight', fields:inn(4,3), how:['Cue ball from the head string through a gate of two balls set two ball widths apart. No side spin.','Speed 3: foot rail, head rail, then the cue ball has to stop in the marked end zone.','A shot counts only if neither gate ball is touched and the speed is right.','4 innings of 3 shots. Enter the number of good shots per inning. If the table is not true on all three lanes, shoot one lane three times.'] }] },
+  { id:'c3', name:'Follow Shot Drill', target:10, factor:10, parts:[{ id:'a', title:'Follow Shot Drill', diagram:'pat2_follow', fields:inn(3,12), how:['Six straight-in shots: three balls on the second-diamond line, three on the third, about half a ball apart and off the long rail.','Cue ball anywhere on its diamond line, lined up with ball and pocket.','1 point for the pot, 1 more if the cue ball follows it into the same corner pocket.','No position point if the cue ball touches a neighbouring ball. Any order. 12 points per inning.'] }] },
+  { id:'c4', name:'Draw Shot Drill', target:10, factor:10, parts:[{ id:'a', title:'Draw Shot Drill', diagram:'pat2_draw', fields:inn(3,12), how:['Object balls on the first and second diamond lines. Cue ball on the fifth-diamond line, lined up with ball and corner pocket.','1 point for the pot, 1 more if the cue ball draws back and stops in the position zone. It may touch the head rail.','No position point if the cue ball touches a neighbouring ball. On the balls nearest the long rails the cue ball may use that rail, and a scratch in a head pocket still earns the position point.','The draw has to be clearly visible. 12 points per inning.'] }] },
+  { id:'c5', name:'Small Area Position', target:6, factor:16.67, parts:[
+    { id:'a', label:'5a', title:'Small Area Position Drill 3', diagram:'pat2_small3', fields:inn(3,10), how:['Ten balls in an L around the foot spot (no ball on the spot itself). Ball in hand to start.','Play them in order along the L, starting with the ball nearest the foot rail, all into the one corner pocket shown.','Touching another ball or scratching ends the inning and that ball does not count. No banks.','Score is balls potted, up to 10.'] },
+    { id:'b', label:'5b', title:'Small Area Position Drill 4', diagram:'pat2_small4', fields:inn(3,10), how:['Two rows of five on the third-diamond line. Ball in hand to start.','Work from the rail inward, each ball into the far corner pocket. After the fifth ball take ball in hand for the other five.','Touching another ball or scratching ends the inning and that ball does not count. No banks.','Score is balls potted, up to 10.'] } ] },
+  { id:'c6', name:'Large Area Position', target:5.5, factor:18.18, parts:[
+    { id:'a', label:'6a', title:'Large Area Position Drill 3', diagram:'pat2_large3', fields:inn(3,10), how:['1 on the head spot, 2 on the foot spot, 9 and 10 half a ball off the long rails, the rest evenly between.','Numerical order, ball in hand to start. Odd balls into one corner, even balls into the opposite corner, as drawn.','Touching another ball or scratching ends the inning and that ball does not count. No banks or combinations. Kicks and jumps are allowed.','Score is balls potted, up to 10.'] },
+    { id:'b', label:'6b', title:'Large Area Position Drill 4', diagram:'pat2_large4', fields:inn(3,10), how:['All ten balls on the centre line: 1 on the head spot, 2 on the foot spot, 9 and 10 half a ball off the short rails.','Numerical order, ball in hand to start. Either corner pocket at that end of the table.','Touching another ball or scratching ends the inning and that ball does not count. No banks or combinations. Kicks and jumps are allowed.','Score is balls potted, up to 10.'] } ] },
+  { id:'c7', name:'Frozen Rail', target:3.33, factor:30, parts:[
+    { id:'a', label:'7a', title:'Frozen Rail Drill 3', diagram:'pat2_frozen3', fields:inn(3,6), how:['Six balls frozen on one long rail. Cue ball starts on the centre spot.','Numerical order into the corner pockets. Use one or more rails for position as you like.','No combinations, no banks, no touching other balls. Any of these, or a scratch, ends the inning and that ball does not count.','Score is balls potted, up to 6.'] },
+    { id:'b', label:'7b', title:'Frozen Rail Drill 4', diagram:'pat2_frozen4', fields:inn(3,5), how:['Pot the ball frozen on the head rail and send the cue ball through one lane of the row of balls. Ball and cue ball go back to their spots each time.','One attempt per lane, lanes 1 to 5 in turn. The cue ball may use a rail only on the first and last lane.','A lane counts only if the cue ball touches nothing, does not scratch, does not come back through, and stays on the far half.','Score is lanes made, up to 5.'] } ] },
+  { id:'c8', name:'Endless Position', target:7, factor:14.29, parts:[{ id:'a', title:'Endless Position Drill 3', diagram:'pat2_endless', fields:inn(3,15), how:['Five balls on the centre line. 5 and 6 sit a ball off their short rails. Ball in hand to start.','Play 5, 6, 7, 8, 9 in order. Any pocket, but call it.','When all five are down, re-spot them and keep going from where the cue ball stopped.','Touching another ball or scratching ends the inning. No banks or combinations. Capped at 15 balls per inning.'] }] },
+  { id:'c9', name:'Standard Position Shots', target:2, factor:50, parts:stdParts() },
+  { id:'c10', name:'9-Ball Situation', target:6, factor:16.67, parts:[{ id:'a', title:'9-Ball Situation Drill 1', diagram:'pat2_9ball', fields:inn(3,9), how:['Set the layout and try to run out under full 9-ball rules.','The cue ball may touch other balls. Balls potted on a foul do not count.','A combination on the 9 scores the full 9. Luck counts.','3 innings, each from the same layout. Score is balls legally potted, up to 9. Mirror the layout if you are left-handed.'] }] },
+]},
+{ id:'pat3', name:'PAT 3', sub:'Playing Ability Test, level 3', mode:'sum', targetTotal:1000, emblems:[550,700,850,1000], cats:[
+  { id:'c1', name:'Stroke Straightness', target:1.5, factor:66.67, parts:[{ id:'a', title:'Straightness at Speed 4', diagram:'pat3_straight', fields:inn(4,3), how:['Cue ball from the head string through a gate of two balls set two ball widths apart. No side spin.','Speed 4: four table lengths, and the cue ball has to stop above the head string.','A shot counts only if neither gate ball is touched and the speed is right.','4 innings of 3 shots. Enter the number of good shots per inning.'] }] },
+  { id:'c2', name:'Draw Drill', target:10, factor:10, parts:[{ id:'a', title:'Draw Drill', diagram:'pat3_draw', fields:inn(3,12), how:['Six balls on the line between the side pockets, half a ball apart and off the long rail. Cue ball on the seventh-diamond line, lined up with ball and corner pocket.','1 point for the pot, 1 more if the cue ball draws back and stops in the head zone. It may not touch the head rail.','No position point if the cue ball touches a neighbouring ball or scratches. On the balls nearest the long rails the cue ball may use that rail.','The draw has to be clearly visible. 12 points per inning.'] }] },
+  { id:'c3', name:'Small Area Position', target:10, factor:10, parts:[
+    { id:'a', label:'3a', title:'Small Area Position Drill 5', diagram:'pat3_small5', fields:inn(3,15), how:['Fifteen balls in an L: eight toward the foot rail, seven in a column one ball beyond the foot string. Ball in hand to start.','Play them in order along the L, starting nearest the foot rail, all into the one corner pocket shown.','Touching any other ball or scratching ends the inning and that ball does not count. No banks.','Score is balls potted, up to 15.'] },
+    { id:'b', label:'3b', title:'Small Area Position Drill 6', diagram:'pat3_small6', fields:inn(3,15), how:['Fifteen balls in one row across the table. Put the 8 in the middle, solids one side, stripes the other. Ball in hand to start.','Work along the row in order. Either far corner pocket, any time.','Touching any other ball or scratching ends the inning and that ball does not count. No banks.','Score is balls potted, up to 15.'] } ] },
+  { id:'c4', name:'Large Area Position', target:10, factor:10, parts:[
+    { id:'a', label:'4a', title:'Large Area Position Drill 5', diagram:null, missing:'The pages for this drill (PAT 3, pages 16 to 21) were not in the scanned file. Set it up from the book. Scoring here works as normal.', fields:inn(3,15), how:['Score is balls potted per inning, up to 15.'] },
+    { id:'b', label:'4b', title:'Large Area Position Drill 6', diagram:null, missing:'The pages for this drill (PAT 3, pages 16 to 21) were not in the scanned file. Set it up from the book. Scoring here works as normal.', fields:inn(3,15), how:['Score is balls potted per inning, up to 15.'] } ] },
+  { id:'c5', name:'Angle Shots', target:3, factor:33.33, parts:[
+    { id:'a', label:'5a', title:'Angle Shot Drill 1', diagram:'pat3_angle1', fields:inn(3,7), how:['Balls 3 to 9 on the centre line, half a diamond apart, from the centre spot toward the foot rail. Cue ball on the head spot for every shot.','Start with the 3 and go up in order. Odd balls to one corner, even balls to the other, as drawn.','A miss ends the inning. The next inning starts on the ball you missed, and balls are re-spotted so 7 is always possible.','Touching another ball and scratching are each tolerated once. Score is balls potted, up to 7.'] },
+    { id:'b', label:'5b', title:'Angle Shot Drill 2', diagram:'pat3_angle2', fields:inn(3,4), how:['Four balls on the diamond crossings shown. For each one the cue ball sits frozen on the long rail at its matching spot.','Start with the 1. Each ball goes to the corner drawn.','A miss ends the inning. The next inning starts on the missed ball, with re-spots so 4 is always possible.','Touching another ball and scratching are each tolerated once. Score is balls potted, up to 4.'] } ] },
+  { id:'c6', name:'Long Shots', target:4, factor:25, parts:[
+    { id:'a', label:'6a', title:'Long Shot Drill 1', diagram:'pat3_long1', fields:inn(3,15), how:['Fifteen balls across the head string, the outer two a ball off the long rails. Cue ball frozen to the head rail, dead straight with ball and far corner pocket.','Start innings alternately from the right and from the left. The middle ball may go to either corner.','A miss ends the inning.','Score is balls potted, up to 15.'] },
+    { id:'b', label:'6b', title:'Long Shot Drill 2', diagram:'pat3_long2', fields:inn(3,5), how:['5 and 6 a ball off the long rails, 9 on the foot spot, 7 and 8 halfway between. Cue ball frozen to the middle of the head rail before every shot.','Order 5, 6, 7, 8, 9. The 9 may go in either corner, the others into the corner drawn.','A miss ends the inning. The next inning starts on the missed ball with everything re-spotted. The cue ball may touch other balls here.','Score is balls potted, up to 5.'] } ] },
+  { id:'c7', name:'9-Ball Situations', target:7, factor:14.29, parts:[
+    { id:'a', label:'7a', title:'9-Ball Situation Drill 3', diagram:'pat3_9b3', fields:inn(3,9), how:['The 1 sits exactly between the jaws of the corner pocket.','Run out under full 9-ball rules. Other balls may be moved. Balls potted on a foul do not count.','A combination on the 9 scores the full 9. Luck counts.','3 innings, each from the same layout. Score is balls legally potted, up to 9.'] },
+    { id:'b', label:'7b', title:'9-Ball Situation Drill 4', diagram:'pat3_9b4', fields:inn(3,9), how:['The 6 and 7 are exactly one ball off the rail.','Run out under full 9-ball rules. Other balls may be moved. Balls potted on a foul do not count.','A combination on the 9 scores the full 9. Luck counts.','3 innings, each from the same layout. Mirror it if you are left-handed. Score is balls legally potted, up to 9.'] } ] },
+  { id:'c8', name:'Bank Shot Drill', target:4, factor:25, parts:[{ id:'a', title:'Bank Shot Drill 1', diagram:'pat3_bank', fields:inn(3,8), how:['Eight balls, each midway between two diamonds and one ball off the cushion.','Ball in hand on the first ball of your choice, then play from where the cue ball stops. Any order, any pocket.','Called bank shots only. The cue ball may not touch any other object ball.','A miss ends the inning and the next starts fresh with all eight. Score is banks made, up to 8.'] }] },
+  { id:'c9', name:'Standard Position Shots', target:3, factor:33.33, parts:stdParts() },
+  { id:'c10', name:'Frozen Rail', target:10, factor:10, parts:[
+    { id:'a', label:'10a', title:'Frozen Rail Drill 5', diagram:'pat3_rail5', fields:inn(3,15), how:['Fifteen balls frozen to the rails. Cue ball starts on the centre spot, not ball in hand.','Any order. Corner pockets only, direct shots only.','No banks, combinations or caroms. Kicks and jumps are allowed. Touching another ball or scratching ends the inning and that ball does not count.','Every inning starts again with all fifteen. Score is balls potted, up to 15.'] },
+    { id:'b', label:'10b', title:'Frozen Rail Drill 6', diagram:'pat3_rail6', fields:inn(3,15), how:['Twelve balls frozen to the rails plus 13, 14 and 15 on the centre line. Ball in hand to start.','Numerical order, 1 to 15.','No banks, combinations or caroms. Kicks and jumps are allowed. Touching another ball or scratching ends the inning and that ball does not count.','Score is balls potted, up to 15.'] } ] },
+]},
+{ id:'tech', name:'Technique Set', short:'Technique', sub:'PAT 3 technique training drills', mode:'mean', targetTotal:100, cats:[
+  { id:'t1', name:'Follow Shots', kind:'pct', cap:12, parts:[{ id:'a', title:'Follow Shots', diagram:'t_follow', fields:inn(3,12), how:['Six straight-in shots from the seventh-diamond line.','1 point for the pot, 1 more if the cue ball follows it into the same pocket.','12 points per round.'] }] },
+  { id:'t2', name:'Draw Shot Dosage', kind:'pct', cap:6, parts:[{ id:'a', title:'Draw Shot Dosage', diagram:'t_drawdose', fields:inn(3,6), how:['Six draw shots along the long rail, one to each numbered zone.','1 point each time the cue ball stops in the zone you were playing for. The centre of the ball decides.','6 points per round.'] }] },
+  { id:'t3', name:'Criss-Cross Drill', kind:'pct', cap:15, parts:[{ id:'a', title:'Criss-Cross Drill', diagram:'t_criss', fields:inn(3,15), how:['Ball in hand. Numerical order, each ball into its prescribed pocket.','No touching other balls, no banks, combinations or caroms.','Four levels: A is balls 1 to 9, B adds 10 and 13, C adds 12 and 15, D is all fifteen.','Score is balls potted, up to 15.'] }] },
+  { id:'t4', name:'Bank Shot Drill 2', kind:'lower', best:10, parts:[{ id:'a', title:'Bank Shot Drill 2', diagram:'t_bank2', fields:inn(3,20,10), how:['Ten balls on the centre line. Ball in hand to start, any order, any pocket.','Only called banks count. A ball that drops uncalled is re-spotted. Moving other balls is allowed.','Scored here as innings needed to bank all ten: 10 is perfect, 20 is the limit.'] }] },
+  { id:'t5', name:'Standard Position Workout', kind:'sum', cap:112, parts:[
+    { id:'b', label:'Balls', title:'Workout: object balls potted', diagram:null, missing:'The eight workout shots (PAT 3, page 48) were not in the scanned file. Set them up from the book.', fields:Array.from({length:8},(_,i)=>({label:'Shot '+(i+1), max:7, min:0})), how:['7 attempts at each of the 8 shots. Enter how many times the object ball went in.'] },
+    { id:'p', label:'Position', title:'Workout: positions reached', diagram:null, missing:'The eight workout shots (PAT 3, page 48) were not in the scanned file. Set them up from the book.', fields:Array.from({length:8},(_,i)=>({label:'Shot '+(i+1), max:7, min:0})), how:['Enter how many times you also reached position. A position point only counts when the ball was potted.','The book puts the pass mark at 80 percent: 44.8 of 56 for each line.'] } ] },
+]},
+];
+
+/* ---------- Scoring (pure) ---------- */
+function fieldKeys(cat){ const k=[]; cat.parts.forEach(p=>p.fields.forEach((f,i)=>k.push({ key:cat.id+'.'+p.id+'.'+i, f, part:p }))); return k; }
+function catCap(cat){ const k=fieldKeys(cat); return k.reduce((s,x)=>s+x.f.max,0)/k.length; }
+function catMaxPts(cat){ const kind=cat.kind||'pat'; return kind==='pat' ? Math.round(catCap(cat)*cat.factor) : 100; }
+function catCalc(cat, scores){
+  const keys=fieldKeys(cat), vals=keys.map(k=>scores[k.key]).filter(v=>typeof v==='number');
+  const n=keys.length, entered=vals.length, complete=entered===n, sum=vals.reduce((a,b)=>a+b,0);
+  const kind=cat.kind||'pat';
+  let avg=null, pts=null;
+  if(entered){
+    const div = complete ? n : entered;
+    avg = sum/div;
+    if(kind==='pat') pts=Math.round(avg*cat.factor);
+    else if(kind==='pct') pts=Math.round(avg/cat.cap*100);
+    else if(kind==='lower') pts=Math.round(cat.best/avg*100);
+    else if(kind==='sum'){ avg=sum; pts=Math.round(sum/(complete?cat.cap:entered*7)*100); }
+  }
+  return { n, entered, complete, sum, avg, pts, max:catMaxPts(cat) };
+}
+function sessionCalc(test, scores){
+  const cats=test.cats.map(c=>({ cat:c, ...catCalc(c,scores) }));
+  const done=cats.filter(c=>c.complete), started=cats.filter(c=>c.entered>0);
+  const sum=done.reduce((s,c)=>s+c.pts,0);
+  const total = test.mode==='sum' ? sum : (done.length ? Math.round(sum/done.length) : 0);
+  const maxTotal = test.mode==='sum' ? test.cats.reduce((s,c)=>s+catMaxPts(c),0) : 100;
+  return { cats, total, maxTotal, doneCount:done.length, startedCount:started.length, complete:done.length===test.cats.length };
+}
+if (typeof module!=='undefined') module.exports={ TESTS, DIAGRAMS, catCalc, sessionCalc, catMaxPts, fieldKeys };
+
+/* ---------- Diagram renderer (portrait table: foot rail at the top, head rail at the bottom) ---------- */
+const U=100, R=44, TW=4*U+2*R, TH=8*U+2*R;
+const BALL={1:'#f4c531',2:'#1d3fa6',3:'#d6312b',4:'#6a3fa0',5:'#f07f1f',6:'#1f8a4c',7:'#8c2a2a',8:'#151515'};
+let clipN=0;
+function drawDiagram(id, mirror){
+  const spec=DIAGRAMS[id]();
+  { const objs=(spec.balls||[]).filter(b=>!b.t); if(!objs.some(b=>b.n)) objs.forEach((b,i)=>{ b.n=i+1; }); }
+  const T=p=>[R+(mirror?p[1]:4-p[1])*U, R+p[0]*U];
+  const pt=p=>{ const q=T(p); return q[0].toFixed(1)+','+q[1].toFixed(1); };
+  let o='';
+  o+=`<rect x="0" y="0" width="${TW}" height="${TH}" rx="30" fill="#1a2632"/>`;
+  o+=`<rect x="5" y="5" width="${TW-10}" height="${TH-10}" rx="26" fill="none" stroke="#32475a" stroke-width="1.5"/>`;
+  o+=`<rect x="${R-13}" y="${R-13}" width="${4*U+26}" height="${8*U+26}" rx="7" fill="#1f6792"/>`;
+  o+=`<rect x="${R}" y="${R}" width="${4*U}" height="${8*U}" fill="#2f86bd"/>`;
+  for(let i=1;i<8;i++) o+=`<line x1="${R}" y1="${R+i*U}" x2="${R+4*U}" y2="${R+i*U}" stroke="#fff" stroke-opacity="${i===6?.34:.07}" stroke-width="${i===6?1.4:1}"/>`;
+  for(let j=1;j<4;j++) o+=`<line x1="${R+j*U}" y1="${R}" x2="${R+j*U}" y2="${R+8*U}" stroke="#fff" stroke-opacity=".07"/>`;
+  [[R-6,R-6,20],[TW-R+6,R-6,20],[R-6,TH-R+6,20],[TW-R+6,TH-R+6,20],[R-13,R+4*U,18],[TW-R+13,R+4*U,18]].forEach(c=>{ o+=`<circle cx="${c[0]}" cy="${c[1]}" r="${c[2]}" fill="#05090c"/>`; });
+  for(let i=1;i<8;i++){ if(i===4) continue; o+=`<circle cx="15" cy="${R+i*U}" r="3" fill="#e8eef3"/><circle cx="${TW-15}" cy="${R+i*U}" r="3" fill="#e8eef3"/>`; }
+  for(let j=1;j<4;j++) o+=`<circle cx="${R+j*U}" cy="15" r="3" fill="#e8eef3"/><circle cx="${R+j*U}" cy="${TH-15}" r="3" fill="#e8eef3"/>`;
+  o+=`<text x="${R+1.5*U}" y="19" class="dg-rail">FOOT</text><text x="${R+1.5*U}" y="${TH-11}" class="dg-rail">HEAD</text>`;
+  o+=`<polygon points="${pt([2,2])} ${pt([1.25,1.57])} ${pt([1.25,2.43])}" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1.5" stroke-linejoin="round"/>`;
+  [[2,2],[4,2],[6,2]].forEach(p=>{ const q=T(p); o+=`<circle cx="${q[0]}" cy="${q[1]}" r="2.6" fill="#fff" fill-opacity=".55"/>`; });
+  (spec.zones||[]).forEach(z=>{
+    o+=`<polygon points="${z.poly.map(pt).join(' ')}" fill="#fff" fill-opacity=".17" stroke="#fff" stroke-opacity=".8" stroke-width="1.4" stroke-dasharray="5 4"/>`;
+    if(z.label){ const q=T(z.lp); o+=`<text x="${q[0].toFixed(1)}" y="${(q[1]+4).toFixed(1)}" class="dg-zone">${z.label}</text>`; }
+  });
+  const ST={ ob:['#ffd66b',2.6,1,''], aim:['#ffffff',1.6,.85,''], cue:['#ffffff',2,.95,'6 5'], thin:['#ffffff',1.1,.5,''], range:['#ffffff',7,.3,''] };
+  (spec.lines||[]).forEach(l=>{
+    const s=ST[l.k], P=l.pts.map(T);
+    o+=`<polyline points="${P.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')}" fill="none" stroke="${s[0]}" stroke-width="${s[1]}" stroke-opacity="${s[2]}" stroke-linecap="round" stroke-linejoin="round"${s[3]?` stroke-dasharray="${s[3]}"`:''}/>`;
+    if(l.arrow){ const a=P[P.length-2], b=P[P.length-1], ang=Math.atan2(b[1]-a[1],b[0]-a[0]), L=11, w=.42;
+      const p1=[b[0]-L*Math.cos(ang-w), b[1]-L*Math.sin(ang-w)], p2=[b[0]-L*Math.cos(ang+w), b[1]-L*Math.sin(ang+w)];
+      o+=`<polygon points="${b[0].toFixed(1)},${b[1].toFixed(1)} ${p1[0].toFixed(1)},${p1[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" fill="${s[0]}"/>`; }
+  });
+  (spec.balls||[]).forEach(b=>{
+    const q=T(b.p), x=q[0].toFixed(1), y=q[1].toFixed(1);
+    if(b.t==='ghost'){ const r=b.small?7:11; o+=`<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" fill-opacity=".3" stroke="#fff" stroke-width="1.4" stroke-dasharray="3 2.5"/>`; return; }
+    o+=`<ellipse cx="${(q[0]+2).toFixed(1)}" cy="${(q[1]+3).toFixed(1)}" rx="11" ry="10" fill="#000" fill-opacity=".22"/>`;
+    if(b.t==='cue'){ o+=`<circle cx="${x}" cy="${y}" r="11" fill="#fdfdf8" stroke="#0a1620" stroke-opacity=".5" stroke-width="1"/>`; return; }
+    if(!b.n){ o+=`<circle cx="${x}" cy="${y}" r="11" fill="#e4483b" stroke="#fff" stroke-opacity=".75" stroke-width="1"/><circle cx="${(q[0]-3.5).toFixed(1)}" cy="${(q[1]-3.5).toFixed(1)}" r="2.6" fill="#fff" fill-opacity=".55"/>`; return; }
+    const c=BALL[b.n>8?b.n-8:b.n], stripe=b.n>8;
+    if(stripe){ const cid='cp'+(++clipN);
+      o+=`<clipPath id="${cid}"><circle cx="${x}" cy="${y}" r="11"/></clipPath><circle cx="${x}" cy="${y}" r="11" fill="#fdfdf8"/><rect x="${(q[0]-11).toFixed(1)}" y="${(q[1]-6.5).toFixed(1)}" width="22" height="13" fill="${c}" clip-path="url(#${cid})"/><circle cx="${x}" cy="${y}" r="11" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="1"/>`;
+    } else o+=`<circle cx="${x}" cy="${y}" r="11" fill="${c}" stroke="#fff" stroke-opacity=".8" stroke-width="1"/>`;
+    const dark=(b.n===1||b.n===5||b.n===9||b.n===13);
+    o+=`<text x="${x}" y="${(q[1]+4.3).toFixed(1)}" class="dg-num" fill="${dark?'#111':'#fff'}"${b.n>9?' font-size="11"':''}>${b.n}</text>`;
+  });
+  (spec.notes||[]).forEach(n=>{ const q=T(n.p); o+=`<text x="${q[0].toFixed(1)}" y="${(q[1]+4).toFixed(1)}" class="dg-note${n.small?' sm':''}">${n.text}</text>`; });
+  return `<svg class="table" viewBox="0 0 ${TW} ${TH}" role="img" aria-label="Table layout">${o}</svg>`;
+}
+function tipSvg(tip, mirror){
+  const dx=tip[0]*(mirror?-1:1)*15, dy=-tip[1]*15;
+  return `<svg class="tip" viewBox="-22 -22 44 44" aria-hidden="true"><circle r="20" fill="#fdfdf8" stroke="var(--line)" stroke-width="1.5"/><line x1="-20" x2="20" stroke="#9aa7b2" stroke-width=".8"/><line y1="-20" y2="20" stroke="#9aa7b2" stroke-width=".8"/><circle cx="${dx}" cy="${dy}" r="5" fill="#0b6aa8"/></svg>`;
+}
+
+/* ---------- State and storage ---------- */
+const LS='pat-tracker.v1';
+const S={ sessions:[], tomb:[], prefs:{ mirror:false }, view:{ name:'home' }, sync:'device', sheet:null, toast:'' };
+const testById=id=>TESTS.find(t=>t.id===id);
+const sess=id=>S.sessions.find(s=>s.id===id);
+function load(){ try{ const d=JSON.parse(localStorage.getItem(LS)||'null'); if(d){ S.sessions=d.sessions||[]; S.tomb=d.tomb||[]; Object.assign(S.prefs,d.prefs||{}); } }catch(e){} }
+function persist(){ try{ localStorage.setItem(LS, JSON.stringify({ sessions:S.sessions, tomb:S.tomb, prefs:S.prefs })); }catch(e){} }
+const today=()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const fmtDate=iso=>{ const p=iso.split('-'); return new Date(+p[0],+p[1]-1,+p[2]).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); };
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function touch(s){ s.updatedAt=Date.now(); persist(); }
+function newSession(testId){ const s={ id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7), test:testId, date:today(), created:Date.now(), updatedAt:Date.now(), scores:{}, notes:{}, finished:false }; S.sessions.push(s); persist(); return s; }
+function removeSession(id){ S.sessions=S.sessions.filter(s=>s.id!==id); S.tomb.push(id); persist(); }
+const hasData=s=>Object.keys(s.scores).length>0;
+function sorted(testId){ return S.sessions.filter(s=>(!testId||s.test===testId)&&hasData(s)).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.created-b.created); }
+const calcOf=s=>sessionCalc(testById(s.test), s.scores);
+const completeOf=testId=>sorted(testId).filter(s=>calcOf(s).complete);
+
+/* ---------- Backup and restore (scores live on this phone) ---------- */
+function backupJSON(){ return JSON.stringify({ app:'pat-tracker', v:1, exported:new Date().toISOString(), sessions:S.sessions.filter(hasData) }); }
+function cleanSession(r){
+  if(!r||typeof r.id!=='string'||typeof r.test!=='string'||!testById(r.test)) return null;
+  const scores={}; Object.keys(r.scores||{}).forEach(k=>{ const v=r.scores[k]; if(typeof v==='number'&&isFinite(v)) scores[k]=v; });
+  const notes={}; Object.keys(r.notes||{}).forEach(k=>{ if(typeof r.notes[k]==='string') notes[k]=r.notes[k].slice(0,2000); });
+  return { id:r.id.slice(0,40), test:r.test, date:/^\d{4}-\d{2}-\d{2}$/.test(r.date)?r.date:today(), created:+r.created||Date.now(), updatedAt:+r.updatedAt||0, scores, notes, finished:!!r.finished };
+}
+function mergeBackup(text){
+  let d; try{ d=JSON.parse(text); }catch(e){ return { error:'That file is not a PAT Tracker backup.' }; }
+  if(!d||d.app!=='pat-tracker'||!Array.isArray(d.sessions)) return { error:'That file is not a PAT Tracker backup.' };
+  let added=0, updated=0;
+  d.sessions.forEach(r=>{ const c=cleanSession(r); if(!c) return; const l=sess(c.id);
+    if(!l){ S.sessions.push(c); S.tomb=S.tomb.filter(t=>t!==c.id); added++; }
+    else if(c.updatedAt>l.updatedAt){ Object.assign(l,c); updated++; } });
+  persist(); return { added, updated };
+}
+async function saveBackup(){
+  const name='pat-tracker-backup-'+today()+'.json', text=backupJSON();
+  const file=new File([text], name, { type:'application/json' });
+  try{ if(navigator.canShare&&navigator.canShare({ files:[file] })){ await navigator.share({ files:[file], title:'PAT Tracker backup' }); markBackup(); return; } }
+  catch(e){ if(e&&e.name==='AbortError') return; }
+  try{ const url=URL.createObjectURL(file), a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000); markBackup(); toast('Backup file saved'); }
+  catch(e){ toast('Could not save the file'); }
+}
+function markBackup(){ S.prefs.lastBackup=today(); persist(); }
+
+/* ---------- Small charts ---------- */
+function spark(vals,w,h){
+  if(vals.length<2) return '';
+  const mn=Math.min(...vals), mx=Math.max(...vals), sp=(mx-mn)||1;
+  const P=vals.map((v,i)=>[3+i*(w-6)/(vals.length-1), h-4-(v-mn)/sp*(h-8)]);
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polyline points="${P.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${P[P.length-1][0].toFixed(1)}" cy="${P[P.length-1][1].toFixed(1)}" r="2.8" fill="var(--accent)"/></svg>`;
+}
+function trendChart(points, target, unit){
+  const W=340,H=170,L=38,Rr=12,Tp=14,B=26;
+  const vals=points.map(p=>p.v), lo=Math.min(...vals,target), hi=Math.max(...vals,target);
+  const pad=Math.max(10,(hi-lo)*.15), mn=Math.max(0,Math.floor((lo-pad)/10)*10), mx=Math.ceil((hi+pad)/10)*10;
+  const X=i=>points.length===1?(L+(W-L-Rr)/2):L+i*(W-L-Rr)/(points.length-1), Y=v=>Tp+(1-(v-mn)/(mx-mn))*(H-Tp-B);
+  let o='';
+  [mn,(mn+mx)/2,mx].forEach(v=>{ o+=`<line x1="${L}" x2="${W-Rr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end" class="ax">${Math.round(v)}</text>`; });
+  o+=`<line x1="${L}" x2="${W-Rr}" y1="${Y(target)}" y2="${Y(target)}" stroke="var(--good)" stroke-dasharray="4 4" stroke-width="1.2"/><text x="${W-Rr}" y="${Y(target)-5}" text-anchor="end" class="ax" fill="var(--good)">target ${target}${unit}</text>`;
+  const P=points.map((p,i)=>[X(i),Y(p.v)]);
+  if(P.length>1){ o+=`<polygon points="${L},${H-B} ${P.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')} ${P[P.length-1][0].toFixed(1)},${H-B}" fill="var(--accent)" fill-opacity=".12"/><polyline points="${P.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round"/>`; }
+  P.forEach((p,i)=>{ const last=i===P.length-1; o+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${last?4.5:3}" fill="${last?'var(--accent)':'var(--surface)'}" stroke="var(--accent)" stroke-width="2"/>`; });
+  const lastP=P[P.length-1]; o+=`<text x="${Math.min(lastP[0],W-Rr-4).toFixed(1)}" y="${(lastP[1]-10).toFixed(1)}" text-anchor="end" class="ax strong">${points[points.length-1].v}</text>`;
+  o+=`<text x="${L}" y="${H-7}" class="ax">${esc(points[0].label)}</text>`;
+  if(points.length>1) o+=`<text x="${W-Rr}" y="${H-7}" text-anchor="end" class="ax">${esc(points[points.length-1].label)}</text>`;
+  return `<svg class="trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="Score trend">${o}</svg>`;
+}
+
+/* ---------- Views ---------- */
+const app=document.getElementById('app');
+function go(v){ S.view=v; S.sheet=null; if(['home','history','insights'].includes(v.name)){ const h='#'+v.name; if(location.hash!==h){ try{ history.replaceState(null,'',h); }catch(e){ location.hash=h; } } } render(); window.scrollTo(0,0); }
+function render(keep){
+  const y=window.scrollY, v=S.view;
+  const html={ home:vHome, session:vSession, drill:vDrill, result:vResult, history:vHistory, insights:vInsights }[v.name]();
+  app.innerHTML=html+(S.sheet?vSheet():'')+(S.toast?`<div class="toast" role="status">${esc(S.toast)}</div>`:'');
+  if(keep) window.scrollTo(0,y);
+}
+function toast(t){ S.toast=t; render(true); clearTimeout(toast.t); toast.t=setTimeout(()=>{ S.toast=''; const el=document.querySelector('.toast'); if(el) el.remove(); },2200); }
+const nav=cur=>`<nav class="tabs" aria-label="Sections">${[['home','Tests'],['history','History'],['insights','Insights']].map(t=>`<button data-act="tab" data-v="${t[0]}" class="${cur===t[0]?'on':''}"${cur===t[0]?' aria-current="page"':''}>${t[1]}</button>`).join('')}</nav>`;
+const topBar=(title,back,right)=>`<header class="top">${back?`<button class="back" data-act="back" aria-label="Back">&#8249;</button>`:''}<h1>${esc(title)}</h1>${right||''}</header>`;
+const band=(test,pts,max)=>{ if(pts==null) return ''; if(test.mode==='sum') return pts>=100?'good':pts>=80?'warn':'bad'; return pts>=80?'good':pts>=60?'warn':'bad'; };
+
+function vHome(){
+  S.sessions=S.sessions.filter(s=>hasData(s)||Date.now()-s.created<5000||S.view.id===s.id);
+  const open=S.sessions.filter(s=>hasData(s)&&!s.finished).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,3);
+  let h=`<header class="top home"><div><h1>PAT Tracker</h1><p class="sub">Score a test, see where the points went.</p></div><button class="sync" data-act="backup">Backup</button></header><main>`;
+  if(open.length){ h+=`<section><h2>Pick up where you stopped</h2>${open.map(s=>{ const t=testById(s.test), c=calcOf(s); return `<button class="row" data-act="open" data-id="${s.id}"><span class="row-main"><b>${t.name}</b><small>${fmtDate(s.date)} · ${c.doneCount} of ${t.cats.length} drills scored</small></span><span class="num">${c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section>`; }
+  h+=`<section><h2>Start a test</h2>`;
+  TESTS.forEach(t=>{
+    const done=completeOf(t.id), totals=done.map(s=>calcOf(s).total), max=sessionCalc(t,{}).maxTotal;
+    const best=totals.length?Math.max(...totals):null, last=totals.length?totals[totals.length-1]:null;
+    h+=`<article class="card test"><div class="test-head"><div><h3>${t.name}</h3><p>${t.sub}</p></div>${spark(totals.slice(-8),84,34)}</div>
+      <dl class="stats"><div><dt>Drills</dt><dd>${t.cats.length}</dd></div><div><dt>${t.mode==='sum'?'Target':'Out of'}</dt><dd>${t.mode==='sum'?t.targetTotal:100}</dd></div><div><dt>Best</dt><dd>${best==null?'&middot;':best}</dd></div><div><dt>Last</dt><dd>${last==null?'&middot;':last}</dd></div></dl>
+      <p class="fine">${t.mode==='sum'?`Every drill is worth 100 at its target average. The ceiling is ${max}.`:'Each drill is scored as a percentage of its maximum.'}</p>
+      <button class="btn primary" data-act="start" data-test="${t.id}">Start ${t.name}</button></article>`;
+  });
+  return h+`</section></main>`+nav('home');
+}
+
+function catRow(test,s,c,i){
+  const state=c.complete?'done':c.entered?'part':'todo';
+  const right=c.entered?`<span class="num ${c.complete?band(test,c.pts):''}">${c.pts}</span>`:`<span class="num dim">&middot;</span>`;
+  const sub=(c.cat.kind||'pat')==='pat'?`target avg ${c.cat.target} · max ${c.max} pts`:c.cat.kind==='lower'?'fewer innings is better':'percent of maximum';
+  return `<button class="row" data-act="drill" data-ci="${i}"><span class="idx ${state}">${i+1}</span><span class="row-main"><b>${c.cat.name}</b><small>${c.entered&&!c.complete?`${c.entered} of ${c.n} entered`:sub}</small></span>${right}<span class="chev">&#8250;</span></button>`;
+}
+function vSession(){
+  const s=sess(S.view.id), t=testById(s.test), c=calcOf(s);
+  let h=topBar(t.name,true)+`<main><section class="card hero"><div class="hero-num"><span class="big">${c.total}</span><span class="of">${t.mode==='sum'?`of ${t.targetTotal} target`:'out of 100'}</span></div>
+    <div class="prog"><div style="width:${c.doneCount/t.cats.length*100}%"></div></div>
+    <div class="hero-foot"><span>${c.doneCount} of ${t.cats.length} drills scored</span><label class="date">Date <input type="date" id="sess-date" data-chg="date" value="${s.date}"></label></div></section>
+    <section><h2>Drills</h2>${c.cats.map((x,i)=>catRow(t,s,x,i)).join('')}</section>
+    <div class="actions"><button class="btn primary" data-act="finish"${c.startedCount?'':' disabled'}>${c.complete?'Finish and see result':'See result so far'}</button><button class="btn ghost danger" data-act="askdel">Delete this test</button></div></main>`;
+  return h;
+}
+
+function chips(key,f,val){
+  let o=''; for(let v=f.min;v<=f.max;v++) o+=`<button class="chip${val===v?' on':''}" data-act="set" data-key="${key}" data-val="${v}" aria-pressed="${val===v}">${v}</button>`;
+  return `<div class="chips">${o}</div>`;
+}
+function vDrill(){
+  const s=sess(S.view.id), t=testById(s.test), ci=S.view.ci, cat=t.cats[ci], pi=Math.min(S.view.pi||0,cat.parts.length-1), part=cat.parts[pi];
+  const c=catCalc(cat,s.scores), kind=cat.kind||'pat', mir=S.prefs.mirror;
+  let h=topBar(`${ci+1}. ${cat.name}`,true,`<span class="step">${ci+1}/${t.cats.length}</span>`)+'<main>';
+  if(cat.parts.length>1) h+=`<div class="seg" role="tablist">${cat.parts.map((p,i)=>{ const filled=p.fields.every((f,k)=>typeof s.scores[cat.id+'.'+p.id+'.'+k]==='number'); return `<button role="tab" aria-selected="${i===pi}" class="${i===pi?'on':''}${filled?' filled':''}" data-act="part" data-pi="${i}">${p.label}</button>`; }).join('')}</div>`;
+  h+=`<h2 class="part-title">${part.title}</h2>`;
+  if(part.diagram) h+=`<figure class="fig">${drawDiagram(part.diagram,mir)}<figcaption><button class="link" data-act="mirror">${mir?'Show original side':'Mirror layout'}</button></figcaption></figure>`;
+  else h+=`<p class="missing">${part.missing}</p>`;
+  h+=`<section class="card how">${part.tip?`<div class="tiprow">${tipSvg(part.tip,mir)}<span>Suggested tip position from the book</span></div>`:''}<ul>${part.how.map(x=>`<li>${x}</li>`).join('')}</ul></section>`;
+  h+=`<section class="card entry"><h3>Your score</h3>${part.fields.map((f,i)=>{ const key=cat.id+'.'+part.id+'.'+i; return `<div class="field"><span class="flabel">${f.label}</span>${chips(key,f,s.scores[key])}</div>`; }).join('')}</section>`;
+  // live summary
+  const prev=sorted(t.id).filter(x=>x.id!==s.id).map(x=>catCalc(cat,x.scores)).filter(x=>x.complete).map(x=>x.pts);
+  const best=prev.length?Math.max(...prev):null, last=prev.length?prev[prev.length-1]:null;
+  let avgTxt='', scale='';
+  if(c.entered){
+    if(kind==='pat'){ avgTxt=`average ${c.avg.toFixed(2)} against a target of ${cat.target}`; const sm=Math.max(c.max,100); scale=`<div class="meter"><div class="fill ${band(t,c.pts)}" style="width:${Math.min(100,c.pts/sm*100)}%"></div><i class="tick" style="left:${100/sm*100}%"></i></div><div class="meter-lab"><span>0</span><span style="left:${100/sm*100}%" class="abs">target 100</span><span>max ${c.max}</span></div>`; }
+    else if(kind==='pct') avgTxt=`average ${c.avg.toFixed(2)} of ${cat.cap}`;
+    else if(kind==='lower') avgTxt=`average ${c.avg.toFixed(1)} innings`;
+    else avgTxt=`${c.sum} of ${c.complete?cat.cap:c.entered*7} so far`;
+  }
+  h+=`<section class="card summary"><div class="sum-top"><div><span class="big ${c.complete?band(t,c.pts):''}">${c.entered?c.pts:'&middot;'}</span><span class="of">${kind==='pat'?'points':'percent'}${c.entered&&!c.complete?' so far':''}</span></div><div class="sum-side">${best!=null?`<span>Best <b>${best}</b></span><span>Last <b>${last}</b></span>`:'<span>First time on this drill</span>'}${c.complete&&best!=null&&c.pts>best?'<span class="pill good">New best</span>':''}</div></div>${avgTxt?`<p class="fine">${c.entered} of ${c.n} entered, ${avgTxt}.</p>`:`<p class="fine">Tap a number for each line above. Tap it again to clear it.</p>`}${scale}</section>`;
+  h+=`<section class="card"><label class="flabel" for="note">Notes for this drill</label><textarea id="note" data-inp="note" rows="2" placeholder="What cost you points?">${esc(s.notes[cat.id]||'')}</textarea></section>`;
+  const lastPart=pi===cat.parts.length-1, lastCat=ci===t.cats.length-1;
+  h+=`</main><footer class="pager"><button class="btn ghost" data-act="prev"${ci===0&&pi===0?' disabled':''}>Back</button><button class="btn ghost" data-act="list">All drills</button><button class="btn primary" data-act="next">${lastPart&&lastCat?'Result':'Next'}</button></footer>`;
+  return h;
+}
+
+function vResult(){
+  const s=sess(S.view.id), t=testById(s.test), c=calcOf(s);
+  const others=completeOf(t.id).filter(x=>x.id!==s.id), before=others.filter(x=>x.date<s.date||(x.date===s.date&&x.created<s.created));
+  const prev=before.length?calcOf(before[before.length-1]):null, bestOther=others.length?Math.max(...others.map(x=>calcOf(x).total)):null;
+  const done=c.cats.filter(x=>x.complete), sm=Math.max(100,...c.cats.map(x=>x.max));
+  let h=topBar(`${t.name} result`,true)+'<main>';
+  h+=`<section class="card hero"><p class="eyebrow">${fmtDate(s.date)}${c.complete?'':` · ${c.doneCount} of ${t.cats.length} drills`}</p><div class="hero-num"><span class="big">${c.total}</span><span class="of">${t.mode==='sum'?`of ${t.targetTotal} target · ceiling ${c.maxTotal}`:'average percent'}</span></div><div class="pills">`;
+  if(c.complete&&prev) { const d=c.total-prev.total; h+=`<span class="pill ${d>=0?'good':'bad'}">${d>=0?'+':''}${d} vs previous</span>`; }
+  if(c.complete&&bestOther!=null&&c.total>bestOther) h+=`<span class="pill good">Personal best</span>`;
+  if(t.mode==='sum'&&done.length) h+=`<span class="pill">${done.filter(x=>x.pts>=80).length} of ${done.length} drills at 80 or more</span>`;
+  if(!c.complete) h+=`<span class="pill warn">Partial test</span>`;
+  h+=`</div>`;
+  if(t.emblems&&c.complete){ const mx=t.emblems[t.emblems.length-1]*1.1; h+=`<div class="emb"><div class="emb-track"><div class="emb-fill" style="width:${Math.min(100,c.total/mx*100)}%"></div>${t.emblems.map(e=>`<i style="left:${e/mx*100}%" class="${c.total>=e?'hit':''}"><b>${e}</b></i>`).join('')}</div><p class="fine">Emblem lines in the PAT 3 book. ${c.total>=t.emblems[0]?`You cleared ${t.emblems.filter(e=>c.total>=e).pop()}.`:`${t.emblems[0]-c.total} short of the first line.`}</p></div>`; }
+  h+=`</section>`;
+  h+=`<section class="card"><h3>Points by drill</h3><div class="bars">${c.cats.map((x,i)=>{ const pv=prev?prev.cats[i]:null, d=x.complete&&pv&&pv.complete?x.pts-pv.pts:null;
+    return `<button class="bar" data-act="drill" data-ci="${i}"><span class="bar-name">${i+1}. ${x.cat.name}</span><span class="bar-val num ${x.complete?band(t,x.pts):'dim'}">${x.entered?x.pts:'&middot;'}${d!=null&&d!==0?`<small class="${d>0?'up':'down'}">${d>0?'+':''}${d}</small>`:''}</span><span class="track"><span class="cap" style="width:${x.max/sm*100}%"></span>${x.entered?`<span class="fill ${band(t,x.pts)}" style="width:${Math.min(100,x.pts/sm*100)}%"></span>`:''}${t.mode==='sum'?`<i class="tick" style="left:${100/sm*100}%"></i>`:''}</span></button>`; }).join('')}</div>${t.mode==='sum'?'<p class="fine">The mark on each bar is the 100 point target. The pale track ends at that drill\'s maximum.</p>':''}</section>`;
+  if(done.length>=4){
+    const rank=[...done].sort((a,b)=>b.pts-a.pts);
+    h+=`<section class="two"><div class="card"><h3>Strongest</h3><ol class="rank">${rank.slice(0,3).map(x=>`<li><span>${x.cat.name}</span><b class="num">${x.pts}</b></li>`).join('')}</ol></div><div class="card"><h3>Costing you most</h3><ol class="rank">${rank.slice(-3).reverse().map(x=>`<li><span>${x.cat.name}</span><b class="num">${x.pts}</b></li>`).join('')}</ol></div></section>`;
+  }
+  const notes=t.cats.filter(k=>s.notes[k.id]);
+  if(notes.length) h+=`<section class="card"><h3>Your notes</h3>${notes.map(k=>`<p class="noteline"><b>${k.name}</b> ${esc(s.notes[k.id])}</p>`).join('')}</section>`;
+  h+=`<div class="actions"><button class="btn primary" data-act="edit">Edit scores</button><button class="btn" data-act="copy">Copy summary</button><button class="btn ghost danger" data-act="askdel">Delete this test</button></div></main>`;
+  return h;
+}
+
+function vHistory(){
+  const all=sorted().reverse();
+  let h=topBar('History')+'<main>';
+  if(!all.length) h+=`<p class="empty">No tests yet. Score your first one from the Tests tab and it shows up here.</p>`;
+  else h+=`<section>${all.map(s=>{ const t=testById(s.test), c=calcOf(s); return `<button class="row" data-act="result" data-id="${s.id}"><span class="tag">${t.name}</span><span class="row-main"><b>${fmtDate(s.date)}</b><small>${c.complete?'Full test':`${c.doneCount} of ${t.cats.length} drills`}${s.finished?'':' · in progress'}</small></span><span class="num">${c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section>`;
+  return h+'</main>'+nav('history');
+}
+
+function vInsights(){
+  const tid=S.view.test||(sorted().length?sorted()[sorted().length-1].test:'pat2'), t=testById(tid);
+  const done=completeOf(tid), any=sorted(tid);
+  let h=topBar('Insights')+`<main><div class="seg">${TESTS.map(x=>`<button class="${x.id===tid?'on':''}" data-act="instest" data-test="${x.id}">${x.short||x.name}</button>`).join('')}</div>`;
+  if(!any.length){ return h+`<p class="empty">Nothing recorded for ${t.name} yet. After your first test this page shows your trend, your best per drill and what to practise next.</p></main>`+nav('insights'); }
+  if(done.length){ const pts=done.map(s=>({ v:calcOf(s).total, label:fmtDate(s.date) })), vals=pts.map(p=>p.v);
+    h+=`<section class="card"><h3>Total score, full tests</h3>${trendChart(pts,t.mode==='sum'?t.targetTotal:80,'')}<dl class="stats"><div><dt>Tests</dt><dd>${vals.length}</dd></div><div><dt>Best</dt><dd>${Math.max(...vals)}</dd></div><div><dt>Average</dt><dd>${Math.round(vals.reduce((a,b)=>a+b,0)/vals.length)}</dd></div><div><dt>Last</dt><dd>${vals[vals.length-1]}</dd></div></dl></section>`;
+  } else h+=`<p class="empty">Finish all ${t.cats.length} drills in one sitting to start the total score trend. Drill figures below already count.</p>`;
+  const rows=t.cats.map((cat,i)=>{ const v=any.map(s=>catCalc(cat,s.scores)).filter(x=>x.complete).map(x=>x.pts); const l3=v.slice(-3);
+    return { cat, i, v, best:v.length?Math.max(...v):null, last:v.length?v[v.length-1]:null, recent:l3.length?Math.round(l3.reduce((a,b)=>a+b,0)/l3.length):null, max:catMaxPts(cat) }; });
+  const ranked=rows.filter(r=>r.recent!=null).sort((a,b)=>a.recent-b.recent);
+  if(ranked.length>=3) h+=`<section class="card"><h3>Practise next</h3><p class="fine">Lowest recent scores, averaged over your last three attempts at each drill.</p><ol class="rank">${ranked.slice(0,3).map(r=>`<li><span>${r.cat.name}<small>${t.mode==='sum'?`${Math.max(0,100-r.recent)} points under target`:`${r.recent} percent`}</small></span><b class="num ${band(t,r.recent)}">${r.recent}</b></li>`).join('')}</ol></section>`;
+  h+=`<section class="card"><h3>Every drill</h3><div class="tbl"><div class="tr th"><span>Drill</span><span>Last</span><span>Best</span><span>Trend</span></div>${rows.map(r=>`<div class="tr"><span>${r.i+1}. ${r.cat.name}</span><span class="num ${r.last!=null?band(t,r.last):'dim'}">${r.last==null?'&middot;':r.last}</span><span class="num">${r.best==null?'&middot;':r.best}</span><span>${spark(r.v.slice(-8),64,22)}</span></div>`).join('')}</div></section>`;
+  return h+'</main>'+nav('insights');
+}
+
+function vSheet(){ const sh=S.sheet;
+  if(sh.kind==='backup'){ const n=S.sessions.filter(hasData).length;
+    return `<div class="scrim" data-act="cancel"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Backup"><h3>Backup and restore</h3><p>Your scores are stored on this phone. Save a backup file now and then (to Files, iCloud Drive or mail it to yourself), and restore it here on a new phone.</p><p class="fine">${n} test${n===1?'':'s'} on this phone. Last backup: ${S.prefs.lastBackup?fmtDate(S.prefs.lastBackup):'never'}.</p><div class="actions"><button class="btn primary" data-act="bk-save"${n?'':' disabled'}>Save backup file</button><label class="btn file-btn" for="bk-file">Restore from a backup file</label><input type="file" id="bk-file" accept=".json,application/json" hidden><button class="btn ghost" data-act="cancel">Close</button></div></div>`; }
+  return `<div class="scrim" data-act="cancel"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(sh.title)}"><h3>${esc(sh.title)}</h3><p>${esc(sh.text)}</p><div class="actions"><button class="btn danger-solid" data-act="${sh.act}">${esc(sh.ok)}</button><button class="btn" data-act="cancel">Keep it</button></div></div>`; }
+
+function summaryText(s){ const t=testById(s.test), c=calcOf(s);
+  return [`${t.name}, ${fmtDate(s.date)}`, t.mode==='sum'?`Total ${c.total} (target ${t.targetTotal}, ceiling ${c.maxTotal})`:`Average ${c.total} percent`, ...c.cats.map((x,i)=>`${i+1}. ${x.cat.name}: ${x.entered?x.pts:'not scored'}`)].join('\n'); }
+
+/* ---------- Events ---------- */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b||b.disabled) return;
+  const a=b.dataset.act, v=S.view, s=v.id?sess(v.id):null;
+  if(a==='tab') go({ name:b.dataset.v });
+  else if(a==='start'){ const n=newSession(b.dataset.test); go({ name:'session', id:n.id }); }
+  else if(a==='open') go({ name:'session', id:b.dataset.id });
+  else if(a==='result') go({ name:'result', id:b.dataset.id });
+  else if(a==='drill') go({ name:'drill', id:v.id, ci:+b.dataset.ci, pi:0, from:v.name });
+  else if(a==='part'){ v.pi=+b.dataset.pi; render(true); }
+  else if(a==='set'){ const k=b.dataset.key, val=+b.dataset.val; if(s.scores[k]===val) delete s.scores[k]; else s.scores[k]=val; if(s.finished&&!hasData(s)) s.finished=false; touch(s); render(true); }
+  else if(a==='mirror'){ S.prefs.mirror=!S.prefs.mirror; persist(); render(true); }
+  else if(a==='list') go({ name:'session', id:v.id });
+  else if(a==='prev'||a==='next'){ const t=testById(s.test), d=a==='next'?1:-1; let ci=v.ci, pi=(v.pi||0)+d;
+    if(pi<0){ ci--; if(ci<0) return; pi=t.cats[ci].parts.length-1; } else if(pi>=t.cats[ci].parts.length){ ci++; pi=0; }
+    if(ci>=t.cats.length){ s.finished=true; touch(s); go({ name:'result', id:s.id }); } else go({ name:'drill', id:v.id, ci, pi, from:v.from }); }
+  else if(a==='finish'){ s.finished=true; touch(s); go({ name:'result', id:s.id }); }
+  else if(a==='edit') go({ name:'session', id:v.id });
+  else if(a==='back'){ if(v.name==='drill') go(v.from==='result'?{ name:'result', id:v.id }:{ name:'session', id:v.id }); else if(v.name==='result') go({ name:'history' }); else go({ name:'home' }); }
+  else if(a==='instest'){ v.test=b.dataset.test; render(true); }
+  else if(a==='askdel'){ S.sheet={ title:'Delete this test?', text:'Its scores and notes are removed from your history. This cannot be undone.', ok:'Delete', act:'del' }; render(true); }
+  else if(a==='cancel'){ S.sheet=null; render(true); }
+  else if(a==='backup'){ S.sheet={ kind:'backup' }; render(true); }
+  else if(a==='bk-save') saveBackup();
+  else if(a==='del'){ removeSession(v.id); go({ name:'history' }); toast('Test deleted'); }
+  else if(a==='copy'){ const txt=summaryText(s); try{ navigator.clipboard.writeText(txt).then(()=>toast('Summary copied'),()=>toast('Copy was blocked by the browser')); }catch(err){ toast('Copy was blocked by the browser'); } }
+});
+document.addEventListener('change',e=>{ if(e.target.id==='bk-file'&&e.target.files&&e.target.files[0]){ const f=e.target.files[0]; f.text().then(t=>{ const r=mergeBackup(t); S.sheet=null; if(r.error) toast(r.error); else { toast(r.added||r.updated?`Restored ${r.added} new, ${r.updated} updated`:'Nothing new in that backup'); } render(true); }); return; }
+  if(e.target.dataset.chg==='date'&&e.target.value){ const s=sess(S.view.id); s.date=e.target.value; touch(s); } });
+let noteT; document.addEventListener('input',e=>{ if(e.target.dataset.inp==='note'){ const s=sess(S.view.id), t=testById(s.test), cat=t.cats[S.view.ci], val=e.target.value; clearTimeout(noteT); noteT=setTimeout(()=>{ if(val.trim()) s.notes[cat.id]=val; else delete s.notes[cat.id]; touch(s); },500); } });
+window.addEventListener('hashchange',()=>{ const n=location.hash.slice(1); if(['home','history','insights'].includes(n)&&S.view.name!==n&&['home','history','insights'].includes(S.view.name)) go({ name:n }); });
+
+load();
+{ const n=location.hash.slice(1); S.view={ name:['history','insights'].includes(n)?n:'home' }; }
+render();
+if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

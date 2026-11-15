@@ -1,0 +1,297 @@
+/* ---------- Diagram renderer (portrait table: foot rail at the top, head rail at the bottom) ---------- */
+const U=100, R=44, TW=4*U+2*R, TH=8*U+2*R;
+const BALL={1:'#f4c531',2:'#1d3fa6',3:'#d6312b',4:'#6a3fa0',5:'#f07f1f',6:'#1f8a4c',7:'#8c2a2a',8:'#151515'};
+let clipN=0;
+function drawDiagram(id, mirror){
+  const spec=DIAGRAMS[id]();
+  { const objs=(spec.balls||[]).filter(b=>!b.t); if(!objs.some(b=>b.n)) objs.forEach((b,i)=>{ b.n=i+1; }); }
+  const T=p=>[R+(mirror?p[1]:4-p[1])*U, R+p[0]*U];
+  const pt=p=>{ const q=T(p); return q[0].toFixed(1)+','+q[1].toFixed(1); };
+  let o='';
+  o+=`<rect x="0" y="0" width="${TW}" height="${TH}" rx="30" fill="#1a2632"/>`;
+  o+=`<rect x="5" y="5" width="${TW-10}" height="${TH-10}" rx="26" fill="none" stroke="#32475a" stroke-width="1.5"/>`;
+  o+=`<rect x="${R-13}" y="${R-13}" width="${4*U+26}" height="${8*U+26}" rx="7" fill="#1f6792"/>`;
+  o+=`<rect x="${R}" y="${R}" width="${4*U}" height="${8*U}" fill="#2f86bd"/>`;
+  for(let i=1;i<8;i++) o+=`<line x1="${R}" y1="${R+i*U}" x2="${R+4*U}" y2="${R+i*U}" stroke="#fff" stroke-opacity="${i===6?.34:.07}" stroke-width="${i===6?1.4:1}"/>`;
+  for(let j=1;j<4;j++) o+=`<line x1="${R+j*U}" y1="${R}" x2="${R+j*U}" y2="${R+8*U}" stroke="#fff" stroke-opacity=".07"/>`;
+  [[R-6,R-6,20],[TW-R+6,R-6,20],[R-6,TH-R+6,20],[TW-R+6,TH-R+6,20],[R-13,R+4*U,18],[TW-R+13,R+4*U,18]].forEach(c=>{ o+=`<circle cx="${c[0]}" cy="${c[1]}" r="${c[2]}" fill="#05090c"/>`; });
+  for(let i=1;i<8;i++){ if(i===4) continue; o+=`<circle cx="15" cy="${R+i*U}" r="3" fill="#e8eef3"/><circle cx="${TW-15}" cy="${R+i*U}" r="3" fill="#e8eef3"/>`; }
+  for(let j=1;j<4;j++) o+=`<circle cx="${R+j*U}" cy="15" r="3" fill="#e8eef3"/><circle cx="${R+j*U}" cy="${TH-15}" r="3" fill="#e8eef3"/>`;
+  o+=`<text x="${R+1.5*U}" y="19" class="dg-rail">FOOT</text><text x="${R+1.5*U}" y="${TH-11}" class="dg-rail">HEAD</text>`;
+  o+=`<polygon points="${pt([2,2])} ${pt([1.25,1.57])} ${pt([1.25,2.43])}" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1.5" stroke-linejoin="round"/>`;
+  [[2,2],[4,2],[6,2]].forEach(p=>{ const q=T(p); o+=`<circle cx="${q[0]}" cy="${q[1]}" r="2.6" fill="#fff" fill-opacity=".55"/>`; });
+  (spec.zones||[]).forEach(z=>{
+    o+=`<polygon points="${z.poly.map(pt).join(' ')}" fill="#fff" fill-opacity=".17" stroke="#fff" stroke-opacity=".8" stroke-width="1.4" stroke-dasharray="5 4"/>`;
+    if(z.label){ const q=T(z.lp); o+=`<text x="${q[0].toFixed(1)}" y="${(q[1]+4).toFixed(1)}" class="dg-zone">${z.label}</text>`; }
+  });
+  const ST={ ob:['#ffd66b',2.6,1,''], aim:['#ffffff',1.6,.85,''], cue:['#ffffff',2,.95,'6 5'], thin:['#ffffff',1.1,.5,''], range:['#ffffff',7,.3,''] };
+  (spec.lines||[]).forEach(l=>{
+    const s=ST[l.k], P=l.pts.map(T);
+    o+=`<polyline points="${P.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')}" fill="none" stroke="${s[0]}" stroke-width="${s[1]}" stroke-opacity="${s[2]}" stroke-linecap="round" stroke-linejoin="round"${s[3]?` stroke-dasharray="${s[3]}"`:''}/>`;
+    if(l.arrow){ const a=P[P.length-2], b=P[P.length-1], ang=Math.atan2(b[1]-a[1],b[0]-a[0]), L=11, w=.42;
+      const p1=[b[0]-L*Math.cos(ang-w), b[1]-L*Math.sin(ang-w)], p2=[b[0]-L*Math.cos(ang+w), b[1]-L*Math.sin(ang+w)];
+      o+=`<polygon points="${b[0].toFixed(1)},${b[1].toFixed(1)} ${p1[0].toFixed(1)},${p1[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" fill="${s[0]}"/>`; }
+  });
+  (spec.balls||[]).forEach(b=>{
+    const q=T(b.p), x=q[0].toFixed(1), y=q[1].toFixed(1);
+    if(b.t==='ghost'){ const r=b.small?7:11; o+=`<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" fill-opacity=".3" stroke="#fff" stroke-width="1.4" stroke-dasharray="3 2.5"/>`; return; }
+    o+=`<ellipse cx="${(q[0]+2).toFixed(1)}" cy="${(q[1]+3).toFixed(1)}" rx="11" ry="10" fill="#000" fill-opacity=".22"/>`;
+    if(b.t==='cue'){ o+=`<circle cx="${x}" cy="${y}" r="11" fill="#fdfdf8" stroke="#0a1620" stroke-opacity=".5" stroke-width="1"/>`; return; }
+    if(!b.n){ o+=`<circle cx="${x}" cy="${y}" r="11" fill="#e4483b" stroke="#fff" stroke-opacity=".75" stroke-width="1"/><circle cx="${(q[0]-3.5).toFixed(1)}" cy="${(q[1]-3.5).toFixed(1)}" r="2.6" fill="#fff" fill-opacity=".55"/>`; return; }
+    const c=BALL[b.n>8?b.n-8:b.n], stripe=b.n>8;
+    if(stripe){ const cid='cp'+(++clipN);
+      o+=`<clipPath id="${cid}"><circle cx="${x}" cy="${y}" r="11"/></clipPath><circle cx="${x}" cy="${y}" r="11" fill="#fdfdf8"/><rect x="${(q[0]-11).toFixed(1)}" y="${(q[1]-6.5).toFixed(1)}" width="22" height="13" fill="${c}" clip-path="url(#${cid})"/><circle cx="${x}" cy="${y}" r="11" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="1"/>`;
+    } else o+=`<circle cx="${x}" cy="${y}" r="11" fill="${c}" stroke="#fff" stroke-opacity=".8" stroke-width="1"/>`;
+    const dark=(b.n===1||b.n===5||b.n===9||b.n===13);
+    o+=`<text x="${x}" y="${(q[1]+4.3).toFixed(1)}" class="dg-num" fill="${dark?'#111':'#fff'}"${b.n>9?' font-size="11"':''}>${b.n}</text>`;
+  });
+  (spec.notes||[]).forEach(n=>{ const q=T(n.p); o+=`<text x="${q[0].toFixed(1)}" y="${(q[1]+4).toFixed(1)}" class="dg-note${n.small?' sm':''}">${n.text}</text>`; });
+  return `<svg class="table" viewBox="0 0 ${TW} ${TH}" role="img" aria-label="Table layout">${o}</svg>`;
+}
+function tipSvg(tip, mirror){
+  const dx=tip[0]*(mirror?-1:1)*15, dy=-tip[1]*15;
+  return `<svg class="tip" viewBox="-22 -22 44 44" aria-hidden="true"><circle r="20" fill="#fdfdf8" stroke="var(--line)" stroke-width="1.5"/><line x1="-20" x2="20" stroke="#9aa7b2" stroke-width=".8"/><line y1="-20" y2="20" stroke="#9aa7b2" stroke-width=".8"/><circle cx="${dx}" cy="${dy}" r="5" fill="#0b6aa8"/></svg>`;
+}
+
+/* ---------- State and storage ---------- */
+const LS='pat-tracker.v1';
+const S={ sessions:[], tomb:[], prefs:{ mirror:false }, view:{ name:'home' }, sync:'device', sheet:null, toast:'' };
+const testById=id=>TESTS.find(t=>t.id===id);
+const sess=id=>S.sessions.find(s=>s.id===id);
+function load(){ try{ const d=JSON.parse(localStorage.getItem(LS)||'null'); if(d){ S.sessions=d.sessions||[]; S.tomb=d.tomb||[]; Object.assign(S.prefs,d.prefs||{}); } }catch(e){} }
+function persist(){ try{ localStorage.setItem(LS, JSON.stringify({ sessions:S.sessions, tomb:S.tomb, prefs:S.prefs })); }catch(e){} }
+const today=()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const fmtDate=iso=>{ const p=iso.split('-'); return new Date(+p[0],+p[1]-1,+p[2]).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); };
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function touch(s){ s.updatedAt=Date.now(); persist(); }
+function newSession(testId){ const s={ id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7), test:testId, date:today(), created:Date.now(), updatedAt:Date.now(), scores:{}, notes:{}, finished:false }; S.sessions.push(s); persist(); return s; }
+function removeSession(id){ S.sessions=S.sessions.filter(s=>s.id!==id); S.tomb.push(id); persist(); }
+const hasData=s=>Object.keys(s.scores).length>0;
+function sorted(testId){ return S.sessions.filter(s=>(!testId||s.test===testId)&&hasData(s)).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.created-b.created); }
+const calcOf=s=>sessionCalc(testById(s.test), s.scores);
+const completeOf=testId=>sorted(testId).filter(s=>calcOf(s).complete);
+
+/* ---------- Backup and restore (scores live on this phone) ---------- */
+function backupJSON(){ return JSON.stringify({ app:'pat-tracker', v:1, exported:new Date().toISOString(), sessions:S.sessions.filter(hasData) }); }
+function cleanSession(r){
+  if(!r||typeof r.id!=='string'||typeof r.test!=='string'||!testById(r.test)) return null;
+  const scores={}; Object.keys(r.scores||{}).forEach(k=>{ const v=r.scores[k]; if(typeof v==='number'&&isFinite(v)) scores[k]=v; });
+  const notes={}; Object.keys(r.notes||{}).forEach(k=>{ if(typeof r.notes[k]==='string') notes[k]=r.notes[k].slice(0,2000); });
+  return { id:r.id.slice(0,40), test:r.test, date:/^\d{4}-\d{2}-\d{2}$/.test(r.date)?r.date:today(), created:+r.created||Date.now(), updatedAt:+r.updatedAt||0, scores, notes, finished:!!r.finished };
+}
+function mergeBackup(text){
+  let d; try{ d=JSON.parse(text); }catch(e){ return { error:'That file is not a PAT Tracker backup.' }; }
+  if(!d||d.app!=='pat-tracker'||!Array.isArray(d.sessions)) return { error:'That file is not a PAT Tracker backup.' };
+  let added=0, updated=0;
+  d.sessions.forEach(r=>{ const c=cleanSession(r); if(!c) return; const l=sess(c.id);
+    if(!l){ S.sessions.push(c); S.tomb=S.tomb.filter(t=>t!==c.id); added++; }
+    else if(c.updatedAt>l.updatedAt){ Object.assign(l,c); updated++; } });
+  persist(); return { added, updated };
+}
+async function saveBackup(){
+  const name='pat-tracker-backup-'+today()+'.json', text=backupJSON();
+  const file=new File([text], name, { type:'application/json' });
+  try{ if(navigator.canShare&&navigator.canShare({ files:[file] })){ await navigator.share({ files:[file], title:'PAT Tracker backup' }); markBackup(); return; } }
+  catch(e){ if(e&&e.name==='AbortError') return; }
+  try{ const url=URL.createObjectURL(file), a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000); markBackup(); toast('Backup file saved'); }
+  catch(e){ toast('Could not save the file'); }
+}
+function markBackup(){ S.prefs.lastBackup=today(); persist(); }
+
+/* ---------- Small charts ---------- */
+function spark(vals,w,h){
+  if(vals.length<2) return '';
+  const mn=Math.min(...vals), mx=Math.max(...vals), sp=(mx-mn)||1;
+  const P=vals.map((v,i)=>[3+i*(w-6)/(vals.length-1), h-4-(v-mn)/sp*(h-8)]);
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polyline points="${P.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${P[P.length-1][0].toFixed(1)}" cy="${P[P.length-1][1].toFixed(1)}" r="2.8" fill="var(--accent)"/></svg>`;
+}
+function trendChart(points, target, unit){
+  const W=340,H=170,L=38,Rr=12,Tp=14,B=26;
+  const vals=points.map(p=>p.v), lo=Math.min(...vals,target), hi=Math.max(...vals,target);
+  const pad=Math.max(10,(hi-lo)*.15), mn=Math.max(0,Math.floor((lo-pad)/10)*10), mx=Math.ceil((hi+pad)/10)*10;
+  const X=i=>points.length===1?(L+(W-L-Rr)/2):L+i*(W-L-Rr)/(points.length-1), Y=v=>Tp+(1-(v-mn)/(mx-mn))*(H-Tp-B);
+  let o='';
+  [mn,(mn+mx)/2,mx].forEach(v=>{ o+=`<line x1="${L}" x2="${W-Rr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end" class="ax">${Math.round(v)}</text>`; });
+  o+=`<line x1="${L}" x2="${W-Rr}" y1="${Y(target)}" y2="${Y(target)}" stroke="var(--good)" stroke-dasharray="4 4" stroke-width="1.2"/><text x="${W-Rr}" y="${Y(target)-5}" text-anchor="end" class="ax" fill="var(--good)">target ${target}${unit}</text>`;
+  const P=points.map((p,i)=>[X(i),Y(p.v)]);
+  if(P.length>1){ o+=`<polygon points="${L},${H-B} ${P.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')} ${P[P.length-1][0].toFixed(1)},${H-B}" fill="var(--accent)" fill-opacity=".12"/><polyline points="${P.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round"/>`; }
+  P.forEach((p,i)=>{ const last=i===P.length-1; o+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${last?4.5:3}" fill="${last?'var(--accent)':'var(--surface)'}" stroke="var(--accent)" stroke-width="2"/>`; });
+  const lastP=P[P.length-1]; o+=`<text x="${Math.min(lastP[0],W-Rr-4).toFixed(1)}" y="${(lastP[1]-10).toFixed(1)}" text-anchor="end" class="ax strong">${points[points.length-1].v}</text>`;
+  o+=`<text x="${L}" y="${H-7}" class="ax">${esc(points[0].label)}</text>`;
+  if(points.length>1) o+=`<text x="${W-Rr}" y="${H-7}" text-anchor="end" class="ax">${esc(points[points.length-1].label)}</text>`;
+  return `<svg class="trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="Score trend">${o}</svg>`;
+}
+
+/* ---------- Views ---------- */
+const app=document.getElementById('app');
+function go(v){ S.view=v; S.sheet=null; if(['home','history','insights'].includes(v.name)){ const h='#'+v.name; if(location.hash!==h){ try{ history.replaceState(null,'',h); }catch(e){ location.hash=h; } } } render(); window.scrollTo(0,0); }
+function render(keep){
+  const y=window.scrollY, v=S.view;
+  const html={ home:vHome, session:vSession, drill:vDrill, result:vResult, history:vHistory, insights:vInsights }[v.name]();
+  app.innerHTML=html+(S.sheet?vSheet():'')+(S.toast?`<div class="toast" role="status">${esc(S.toast)}</div>`:'');
+  if(keep) window.scrollTo(0,y);
+}
+function toast(t){ S.toast=t; render(true); clearTimeout(toast.t); toast.t=setTimeout(()=>{ S.toast=''; const el=document.querySelector('.toast'); if(el) el.remove(); },2200); }
+const nav=cur=>`<nav class="tabs" aria-label="Sections">${[['home','Tests'],['history','History'],['insights','Insights']].map(t=>`<button data-act="tab" data-v="${t[0]}" class="${cur===t[0]?'on':''}"${cur===t[0]?' aria-current="page"':''}>${t[1]}</button>`).join('')}</nav>`;
+const topBar=(title,back,right)=>`<header class="top">${back?`<button class="back" data-act="back" aria-label="Back">&#8249;</button>`:''}<h1>${esc(title)}</h1>${right||''}</header>`;
+const band=(test,pts,max)=>{ if(pts==null) return ''; if(test.mode==='sum') return pts>=100?'good':pts>=80?'warn':'bad'; return pts>=80?'good':pts>=60?'warn':'bad'; };
+
+function vHome(){
+  S.sessions=S.sessions.filter(s=>hasData(s)||Date.now()-s.created<5000||S.view.id===s.id);
+  const open=S.sessions.filter(s=>hasData(s)&&!s.finished).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,3);
+  let h=`<header class="top home"><div><h1>PAT Tracker</h1><p class="sub">Score a test, see where the points went.</p></div><button class="sync" data-act="backup">Backup</button></header><main>`;
+  if(open.length){ h+=`<section><h2>Pick up where you stopped</h2>${open.map(s=>{ const t=testById(s.test), c=calcOf(s); return `<button class="row" data-act="open" data-id="${s.id}"><span class="row-main"><b>${t.name}</b><small>${fmtDate(s.date)} · ${c.doneCount} of ${t.cats.length} drills scored</small></span><span class="num">${c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section>`; }
+  h+=`<section><h2>Start a test</h2>`;
+  TESTS.forEach(t=>{
+    const done=completeOf(t.id), totals=done.map(s=>calcOf(s).total), max=sessionCalc(t,{}).maxTotal;
+    const best=totals.length?Math.max(...totals):null, last=totals.length?totals[totals.length-1]:null;
+    h+=`<article class="card test"><div class="test-head"><div><h3>${t.name}</h3><p>${t.sub}</p></div>${spark(totals.slice(-8),84,34)}</div>
+      <dl class="stats"><div><dt>Drills</dt><dd>${t.cats.length}</dd></div><div><dt>${t.mode==='sum'?'Target':'Out of'}</dt><dd>${t.mode==='sum'?t.targetTotal:100}</dd></div><div><dt>Best</dt><dd>${best==null?'&middot;':best}</dd></div><div><dt>Last</dt><dd>${last==null?'&middot;':last}</dd></div></dl>
+      <p class="fine">${t.mode==='sum'?`Every drill is worth 100 at its target average. The ceiling is ${max}.`:'Each drill is scored as a percentage of its maximum.'}</p>
+      <button class="btn primary" data-act="start" data-test="${t.id}">Start ${t.name}</button></article>`;
+  });
+  return h+`</section></main>`+nav('home');
+}
+
+function catRow(test,s,c,i){
+  const state=c.complete?'done':c.entered?'part':'todo';
+  const right=c.entered?`<span class="num ${c.complete?band(test,c.pts):''}">${c.pts}</span>`:`<span class="num dim">&middot;</span>`;
+  const sub=(c.cat.kind||'pat')==='pat'?`target avg ${c.cat.target} · max ${c.max} pts`:c.cat.kind==='lower'?'fewer innings is better':'percent of maximum';
+  return `<button class="row" data-act="drill" data-ci="${i}"><span class="idx ${state}">${i+1}</span><span class="row-main"><b>${c.cat.name}</b><small>${c.entered&&!c.complete?`${c.entered} of ${c.n} entered`:sub}</small></span>${right}<span class="chev">&#8250;</span></button>`;
+}
+function vSession(){
+  const s=sess(S.view.id), t=testById(s.test), c=calcOf(s);
+  let h=topBar(t.name,true)+`<main><section class="card hero"><div class="hero-num"><span class="big">${c.total}</span><span class="of">${t.mode==='sum'?`of ${t.targetTotal} target`:'out of 100'}</span></div>
+    <div class="prog"><div style="width:${c.doneCount/t.cats.length*100}%"></div></div>
+    <div class="hero-foot"><span>${c.doneCount} of ${t.cats.length} drills scored</span><label class="date">Date <input type="date" id="sess-date" data-chg="date" value="${s.date}"></label></div></section>
+    <section><h2>Drills</h2>${c.cats.map((x,i)=>catRow(t,s,x,i)).join('')}</section>
+    <div class="actions"><button class="btn primary" data-act="finish"${c.startedCount?'':' disabled'}>${c.complete?'Finish and see result':'See result so far'}</button><button class="btn ghost danger" data-act="askdel">Delete this test</button></div></main>`;
+  return h;
+}
+
+function chips(key,f,val){
+  let o=''; for(let v=f.min;v<=f.max;v++) o+=`<button class="chip${val===v?' on':''}" data-act="set" data-key="${key}" data-val="${v}" aria-pressed="${val===v}">${v}</button>`;
+  return `<div class="chips">${o}</div>`;
+}
+function vDrill(){
+  const s=sess(S.view.id), t=testById(s.test), ci=S.view.ci, cat=t.cats[ci], pi=Math.min(S.view.pi||0,cat.parts.length-1), part=cat.parts[pi];
+  const c=catCalc(cat,s.scores), kind=cat.kind||'pat', mir=S.prefs.mirror;
+  let h=topBar(`${ci+1}. ${cat.name}`,true,`<span class="step">${ci+1}/${t.cats.length}</span>`)+'<main>';
+  if(cat.parts.length>1) h+=`<div class="seg" role="tablist">${cat.parts.map((p,i)=>{ const filled=p.fields.every((f,k)=>typeof s.scores[cat.id+'.'+p.id+'.'+k]==='number'); return `<button role="tab" aria-selected="${i===pi}" class="${i===pi?'on':''}${filled?' filled':''}" data-act="part" data-pi="${i}">${p.label}</button>`; }).join('')}</div>`;
+  h+=`<h2 class="part-title">${part.title}</h2>`;
+  if(part.diagram) h+=`<figure class="fig">${drawDiagram(part.diagram,mir)}<figcaption><button class="link" data-act="mirror">${mir?'Show original side':'Mirror layout'}</button></figcaption></figure>`;
+  else h+=`<p class="missing">${part.missing}</p>`;
+  h+=`<section class="card how">${part.tip?`<div class="tiprow">${tipSvg(part.tip,mir)}<span>Suggested tip position from the book</span></div>`:''}<ul>${part.how.map(x=>`<li>${x}</li>`).join('')}</ul></section>`;
+  h+=`<section class="card entry"><h3>Your score</h3>${part.fields.map((f,i)=>{ const key=cat.id+'.'+part.id+'.'+i; return `<div class="field"><span class="flabel">${f.label}</span>${chips(key,f,s.scores[key])}</div>`; }).join('')}</section>`;
+  // live summary
+  const prev=sorted(t.id).filter(x=>x.id!==s.id).map(x=>catCalc(cat,x.scores)).filter(x=>x.complete).map(x=>x.pts);
+  const best=prev.length?Math.max(...prev):null, last=prev.length?prev[prev.length-1]:null;
+  let avgTxt='', scale='';
+  if(c.entered){
+    if(kind==='pat'){ avgTxt=`average ${c.avg.toFixed(2)} against a target of ${cat.target}`; const sm=Math.max(c.max,100); scale=`<div class="meter"><div class="fill ${band(t,c.pts)}" style="width:${Math.min(100,c.pts/sm*100)}%"></div><i class="tick" style="left:${100/sm*100}%"></i></div><div class="meter-lab"><span>0</span><span style="left:${100/sm*100}%" class="abs">target 100</span><span>max ${c.max}</span></div>`; }
+    else if(kind==='pct') avgTxt=`average ${c.avg.toFixed(2)} of ${cat.cap}`;
+    else if(kind==='lower') avgTxt=`average ${c.avg.toFixed(1)} innings`;
+    else avgTxt=`${c.sum} of ${c.complete?cat.cap:c.entered*7} so far`;
+  }
+  h+=`<section class="card summary"><div class="sum-top"><div><span class="big ${c.complete?band(t,c.pts):''}">${c.entered?c.pts:'&middot;'}</span><span class="of">${kind==='pat'?'points':'percent'}${c.entered&&!c.complete?' so far':''}</span></div><div class="sum-side">${best!=null?`<span>Best <b>${best}</b></span><span>Last <b>${last}</b></span>`:'<span>First time on this drill</span>'}${c.complete&&best!=null&&c.pts>best?'<span class="pill good">New best</span>':''}</div></div>${avgTxt?`<p class="fine">${c.entered} of ${c.n} entered, ${avgTxt}.</p>`:`<p class="fine">Tap a number for each line above. Tap it again to clear it.</p>`}${scale}</section>`;
+  h+=`<section class="card"><label class="flabel" for="note">Notes for this drill</label><textarea id="note" data-inp="note" rows="2" placeholder="What cost you points?">${esc(s.notes[cat.id]||'')}</textarea></section>`;
+  const lastPart=pi===cat.parts.length-1, lastCat=ci===t.cats.length-1;
+  h+=`</main><footer class="pager"><button class="btn ghost" data-act="prev"${ci===0&&pi===0?' disabled':''}>Back</button><button class="btn ghost" data-act="list">All drills</button><button class="btn primary" data-act="next">${lastPart&&lastCat?'Result':'Next'}</button></footer>`;
+  return h;
+}
+
+function vResult(){
+  const s=sess(S.view.id), t=testById(s.test), c=calcOf(s);
+  const others=completeOf(t.id).filter(x=>x.id!==s.id), before=others.filter(x=>x.date<s.date||(x.date===s.date&&x.created<s.created));
+  const prev=before.length?calcOf(before[before.length-1]):null, bestOther=others.length?Math.max(...others.map(x=>calcOf(x).total)):null;
+  const done=c.cats.filter(x=>x.complete), sm=Math.max(100,...c.cats.map(x=>x.max));
+  let h=topBar(`${t.name} result`,true)+'<main>';
+  h+=`<section class="card hero"><p class="eyebrow">${fmtDate(s.date)}${c.complete?'':` · ${c.doneCount} of ${t.cats.length} drills`}</p><div class="hero-num"><span class="big">${c.total}</span><span class="of">${t.mode==='sum'?`of ${t.targetTotal} target · ceiling ${c.maxTotal}`:'average percent'}</span></div><div class="pills">`;
+  if(c.complete&&prev) { const d=c.total-prev.total; h+=`<span class="pill ${d>=0?'good':'bad'}">${d>=0?'+':''}${d} vs previous</span>`; }
+  if(c.complete&&bestOther!=null&&c.total>bestOther) h+=`<span class="pill good">Personal best</span>`;
+  if(t.mode==='sum'&&done.length) h+=`<span class="pill">${done.filter(x=>x.pts>=80).length} of ${done.length} drills at 80 or more</span>`;
+  if(!c.complete) h+=`<span class="pill warn">Partial test</span>`;
+  h+=`</div>`;
+  if(t.emblems&&c.complete){ const mx=t.emblems[t.emblems.length-1]*1.1; h+=`<div class="emb"><div class="emb-track"><div class="emb-fill" style="width:${Math.min(100,c.total/mx*100)}%"></div>${t.emblems.map(e=>`<i style="left:${e/mx*100}%" class="${c.total>=e?'hit':''}"><b>${e}</b></i>`).join('')}</div><p class="fine">Emblem lines in the PAT 3 book. ${c.total>=t.emblems[0]?`You cleared ${t.emblems.filter(e=>c.total>=e).pop()}.`:`${t.emblems[0]-c.total} short of the first line.`}</p></div>`; }
+  h+=`</section>`;
+  h+=`<section class="card"><h3>Points by drill</h3><div class="bars">${c.cats.map((x,i)=>{ const pv=prev?prev.cats[i]:null, d=x.complete&&pv&&pv.complete?x.pts-pv.pts:null;
+    return `<button class="bar" data-act="drill" data-ci="${i}"><span class="bar-name">${i+1}. ${x.cat.name}</span><span class="bar-val num ${x.complete?band(t,x.pts):'dim'}">${x.entered?x.pts:'&middot;'}${d!=null&&d!==0?`<small class="${d>0?'up':'down'}">${d>0?'+':''}${d}</small>`:''}</span><span class="track"><span class="cap" style="width:${x.max/sm*100}%"></span>${x.entered?`<span class="fill ${band(t,x.pts)}" style="width:${Math.min(100,x.pts/sm*100)}%"></span>`:''}${t.mode==='sum'?`<i class="tick" style="left:${100/sm*100}%"></i>`:''}</span></button>`; }).join('')}</div>${t.mode==='sum'?'<p class="fine">The mark on each bar is the 100 point target. The pale track ends at that drill\'s maximum.</p>':''}</section>`;
+  if(done.length>=4){
+    const rank=[...done].sort((a,b)=>b.pts-a.pts);
+    h+=`<section class="two"><div class="card"><h3>Strongest</h3><ol class="rank">${rank.slice(0,3).map(x=>`<li><span>${x.cat.name}</span><b class="num">${x.pts}</b></li>`).join('')}</ol></div><div class="card"><h3>Costing you most</h3><ol class="rank">${rank.slice(-3).reverse().map(x=>`<li><span>${x.cat.name}</span><b class="num">${x.pts}</b></li>`).join('')}</ol></div></section>`;
+  }
+  const notes=t.cats.filter(k=>s.notes[k.id]);
+  if(notes.length) h+=`<section class="card"><h3>Your notes</h3>${notes.map(k=>`<p class="noteline"><b>${k.name}</b> ${esc(s.notes[k.id])}</p>`).join('')}</section>`;
+  h+=`<div class="actions"><button class="btn primary" data-act="edit">Edit scores</button><button class="btn" data-act="copy">Copy summary</button><button class="btn ghost danger" data-act="askdel">Delete this test</button></div></main>`;
+  return h;
+}
+
+function vHistory(){
+  const all=sorted().reverse();
+  let h=topBar('History')+'<main>';
+  if(!all.length) h+=`<p class="empty">No tests yet. Score your first one from the Tests tab and it shows up here.</p>`;
+  else h+=`<section>${all.map(s=>{ const t=testById(s.test), c=calcOf(s); return `<button class="row" data-act="result" data-id="${s.id}"><span class="tag">${t.name}</span><span class="row-main"><b>${fmtDate(s.date)}</b><small>${c.complete?'Full test':`${c.doneCount} of ${t.cats.length} drills`}${s.finished?'':' · in progress'}</small></span><span class="num">${c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section>`;
+  return h+'</main>'+nav('history');
+}
+
+function vInsights(){
+  const tid=S.view.test||(sorted().length?sorted()[sorted().length-1].test:'pat2'), t=testById(tid);
+  const done=completeOf(tid), any=sorted(tid);
+  let h=topBar('Insights')+`<main><div class="seg">${TESTS.map(x=>`<button class="${x.id===tid?'on':''}" data-act="instest" data-test="${x.id}">${x.short||x.name}</button>`).join('')}</div>`;
+  if(!any.length){ return h+`<p class="empty">Nothing recorded for ${t.name} yet. After your first test this page shows your trend, your best per drill and what to practise next.</p></main>`+nav('insights'); }
+  if(done.length){ const pts=done.map(s=>({ v:calcOf(s).total, label:fmtDate(s.date) })), vals=pts.map(p=>p.v);
+    h+=`<section class="card"><h3>Total score, full tests</h3>${trendChart(pts,t.mode==='sum'?t.targetTotal:80,'')}<dl class="stats"><div><dt>Tests</dt><dd>${vals.length}</dd></div><div><dt>Best</dt><dd>${Math.max(...vals)}</dd></div><div><dt>Average</dt><dd>${Math.round(vals.reduce((a,b)=>a+b,0)/vals.length)}</dd></div><div><dt>Last</dt><dd>${vals[vals.length-1]}</dd></div></dl></section>`;
+  } else h+=`<p class="empty">Finish all ${t.cats.length} drills in one sitting to start the total score trend. Drill figures below already count.</p>`;
+  const rows=t.cats.map((cat,i)=>{ const v=any.map(s=>catCalc(cat,s.scores)).filter(x=>x.complete).map(x=>x.pts); const l3=v.slice(-3);
+    return { cat, i, v, best:v.length?Math.max(...v):null, last:v.length?v[v.length-1]:null, recent:l3.length?Math.round(l3.reduce((a,b)=>a+b,0)/l3.length):null, max:catMaxPts(cat) }; });
+  const ranked=rows.filter(r=>r.recent!=null).sort((a,b)=>a.recent-b.recent);
+  if(ranked.length>=3) h+=`<section class="card"><h3>Practise next</h3><p class="fine">Lowest recent scores, averaged over your last three attempts at each drill.</p><ol class="rank">${ranked.slice(0,3).map(r=>`<li><span>${r.cat.name}<small>${t.mode==='sum'?`${Math.max(0,100-r.recent)} points under target`:`${r.recent} percent`}</small></span><b class="num ${band(t,r.recent)}">${r.recent}</b></li>`).join('')}</ol></section>`;
+  h+=`<section class="card"><h3>Every drill</h3><div class="tbl"><div class="tr th"><span>Drill</span><span>Last</span><span>Best</span><span>Trend</span></div>${rows.map(r=>`<div class="tr"><span>${r.i+1}. ${r.cat.name}</span><span class="num ${r.last!=null?band(t,r.last):'dim'}">${r.last==null?'&middot;':r.last}</span><span class="num">${r.best==null?'&middot;':r.best}</span><span>${spark(r.v.slice(-8),64,22)}</span></div>`).join('')}</div></section>`;
+  return h+'</main>'+nav('insights');
+}
+
+function vSheet(){ const sh=S.sheet;
+  if(sh.kind==='backup'){ const n=S.sessions.filter(hasData).length;
+    return `<div class="scrim" data-act="cancel"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Backup"><h3>Backup and restore</h3><p>Your scores are stored on this phone. Save a backup file now and then (to Files, iCloud Drive or mail it to yourself), and restore it here on a new phone.</p><p class="fine">${n} test${n===1?'':'s'} on this phone. Last backup: ${S.prefs.lastBackup?fmtDate(S.prefs.lastBackup):'never'}.</p><div class="actions"><button class="btn primary" data-act="bk-save"${n?'':' disabled'}>Save backup file</button><label class="btn file-btn" for="bk-file">Restore from a backup file</label><input type="file" id="bk-file" accept=".json,application/json" hidden><button class="btn ghost" data-act="cancel">Close</button></div></div>`; }
+  return `<div class="scrim" data-act="cancel"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(sh.title)}"><h3>${esc(sh.title)}</h3><p>${esc(sh.text)}</p><div class="actions"><button class="btn danger-solid" data-act="${sh.act}">${esc(sh.ok)}</button><button class="btn" data-act="cancel">Keep it</button></div></div>`; }
+
+function summaryText(s){ const t=testById(s.test), c=calcOf(s);
+  return [`${t.name}, ${fmtDate(s.date)}`, t.mode==='sum'?`Total ${c.total} (target ${t.targetTotal}, ceiling ${c.maxTotal})`:`Average ${c.total} percent`, ...c.cats.map((x,i)=>`${i+1}. ${x.cat.name}: ${x.entered?x.pts:'not scored'}`)].join('\n'); }
+
+/* ---------- Events ---------- */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b||b.disabled) return;
+  const a=b.dataset.act, v=S.view, s=v.id?sess(v.id):null;
+  if(a==='tab') go({ name:b.dataset.v });
+  else if(a==='start'){ const n=newSession(b.dataset.test); go({ name:'session', id:n.id }); }
+  else if(a==='open') go({ name:'session', id:b.dataset.id });
+  else if(a==='result') go({ name:'result', id:b.dataset.id });
+  else if(a==='drill') go({ name:'drill', id:v.id, ci:+b.dataset.ci, pi:0, from:v.name });
+  else if(a==='part'){ v.pi=+b.dataset.pi; render(true); }
+  else if(a==='set'){ const k=b.dataset.key, val=+b.dataset.val; if(s.scores[k]===val) delete s.scores[k]; else s.scores[k]=val; if(s.finished&&!hasData(s)) s.finished=false; touch(s); render(true); }
+  else if(a==='mirror'){ S.prefs.mirror=!S.prefs.mirror; persist(); render(true); }
+  else if(a==='list') go({ name:'session', id:v.id });
+  else if(a==='prev'||a==='next'){ const t=testById(s.test), d=a==='next'?1:-1; let ci=v.ci, pi=(v.pi||0)+d;
+    if(pi<0){ ci--; if(ci<0) return; pi=t.cats[ci].parts.length-1; } else if(pi>=t.cats[ci].parts.length){ ci++; pi=0; }
+    if(ci>=t.cats.length){ s.finished=true; touch(s); go({ name:'result', id:s.id }); } else go({ name:'drill', id:v.id, ci, pi, from:v.from }); }
+  else if(a==='finish'){ s.finished=true; touch(s); go({ name:'result', id:s.id }); }
+  else if(a==='edit') go({ name:'session', id:v.id });
+  else if(a==='back'){ if(v.name==='drill') go(v.from==='result'?{ name:'result', id:v.id }:{ name:'session', id:v.id }); else if(v.name==='result') go({ name:'history' }); else go({ name:'home' }); }
+  else if(a==='instest'){ v.test=b.dataset.test; render(true); }
+  else if(a==='askdel'){ S.sheet={ title:'Delete this test?', text:'Its scores and notes are removed from your history. This cannot be undone.', ok:'Delete', act:'del' }; render(true); }
+  else if(a==='cancel'){ S.sheet=null; render(true); }
+  else if(a==='backup'){ S.sheet={ kind:'backup' }; render(true); }
+  else if(a==='bk-save') saveBackup();
+  else if(a==='del'){ removeSession(v.id); go({ name:'history' }); toast('Test deleted'); }
+  else if(a==='copy'){ const txt=summaryText(s); try{ navigator.clipboard.writeText(txt).then(()=>toast('Summary copied'),()=>toast('Copy was blocked by the browser')); }catch(err){ toast('Copy was blocked by the browser'); } }
+});
+document.addEventListener('change',e=>{ if(e.target.id==='bk-file'&&e.target.files&&e.target.files[0]){ const f=e.target.files[0]; f.text().then(t=>{ const r=mergeBackup(t); S.sheet=null; if(r.error) toast(r.error); else { toast(r.added||r.updated?`Restored ${r.added} new, ${r.updated} updated`:'Nothing new in that backup'); } render(true); }); return; }
+  if(e.target.dataset.chg==='date'&&e.target.value){ const s=sess(S.view.id); s.date=e.target.value; touch(s); } });
+let noteT; document.addEventListener('input',e=>{ if(e.target.dataset.inp==='note'){ const s=sess(S.view.id), t=testById(s.test), cat=t.cats[S.view.ci], val=e.target.value; clearTimeout(noteT); noteT=setTimeout(()=>{ if(val.trim()) s.notes[cat.id]=val; else delete s.notes[cat.id]; touch(s); },500); } });
+window.addEventListener('hashchange',()=>{ const n=location.hash.slice(1); if(['home','history','insights'].includes(n)&&S.view.name!==n&&['home','history','insights'].includes(S.view.name)) go({ name:n }); });
+
+load();
+{ const n=location.hash.slice(1); S.view={ name:['history','insights'].includes(n)?n:'home' }; }
+render();
+if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
