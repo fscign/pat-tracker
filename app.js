@@ -112,7 +112,7 @@ function trendChart(points, target, unit){
   const X=i=>points.length===1?(L+(W-L-Rr)/2):L+i*(W-L-Rr)/(points.length-1), Y=v=>Tp+(1-(v-mn)/(mx-mn))*(H-Tp-B);
   let o='';
   [mn,(mn+mx)/2,mx].forEach(v=>{ o+=`<line x1="${L}" x2="${W-Rr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end" class="ax">${Math.round(v)}</text>`; });
-  o+=`<line x1="${L}" x2="${W-Rr}" y1="${Y(target)}" y2="${Y(target)}" stroke="var(--good)" stroke-dasharray="4 4" stroke-width="1.2"/><text x="${W-Rr}" y="${Y(target)-5}" text-anchor="end" class="ax" fill="var(--good)">target ${target}${unit}</text>`;
+  o+=`<line x1="${L}" x2="${W-Rr}" y1="${Y(target)}" y2="${Y(target)}" stroke="var(--good)" stroke-dasharray="4 4" stroke-width="1.2"/><text x="${L+4}" y="${Y(target)-5}" class="ax" fill="var(--good)">target ${target}${unit}</text>`;
   const P=points.map((p,i)=>[X(i),Y(p.v)]);
   if(P.length>1){ o+=`<polygon points="${L},${H-B} ${P.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')} ${P[P.length-1][0].toFixed(1)},${H-B}" fill="var(--accent)" fill-opacity=".12"/><polyline points="${P.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round"/>`; }
   P.forEach((p,i)=>{ const last=i===P.length-1; o+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${last?4.5:3}" fill="${last?'var(--accent)':'var(--surface)'}" stroke="var(--accent)" stroke-width="2"/>`; });
