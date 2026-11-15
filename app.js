@@ -66,18 +66,19 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 function touch(s){ s.updatedAt=Date.now(); persist(); }
 function newSession(testId){ const s={ id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7), test:testId, date:today(), created:Date.now(), updatedAt:Date.now(), scores:{}, notes:{}, finished:false }; S.sessions.push(s); persist(); return s; }
 function removeSession(id){ S.sessions=S.sessions.filter(s=>s.id!==id); S.tomb.push(id); persist(); }
-const hasData=s=>Object.keys(s.scores).length>0;
+const hasData=s=>Object.keys(s.scores).length>0||Object.keys(s.times||{}).length>0||!!s.timer;
 function sorted(testId){ return S.sessions.filter(s=>(!testId||s.test===testId)&&hasData(s)).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.created-b.created); }
 const calcOf=s=>sessionCalc(testById(s.test), s.scores);
 const completeOf=testId=>sorted(testId).filter(s=>calcOf(s).complete);
 
 /* ---------- Backup and restore (scores live on this phone) ---------- */
-function backupJSON(){ return JSON.stringify({ app:'pat-tracker', v:1, exported:new Date().toISOString(), sessions:S.sessions.filter(hasData) }); }
+function backupJSON(){ return JSON.stringify({ app:'pat-tracker', v:1, exported:new Date().toISOString(), sessions:S.sessions.filter(hasData).map(s=>{ const c=Object.assign({},s); if(c.timer){ c.times=Object.assign({},c.times); c.times[c.timer.cat]=Math.round(tOf(s,c.timer.cat)); delete c.timer; } return c; }) }); }
 function cleanSession(r){
   if(!r||typeof r.id!=='string'||typeof r.test!=='string'||!testById(r.test)) return null;
   const scores={}; Object.keys(r.scores||{}).forEach(k=>{ const v=r.scores[k]; if(typeof v==='number'&&isFinite(v)) scores[k]=v; });
   const notes={}; Object.keys(r.notes||{}).forEach(k=>{ if(typeof r.notes[k]==='string') notes[k]=r.notes[k].slice(0,2000); });
-  return { id:r.id.slice(0,40), test:r.test, date:/^\d{4}-\d{2}-\d{2}$/.test(r.date)?r.date:today(), created:+r.created||Date.now(), updatedAt:+r.updatedAt||0, scores, notes, finished:!!r.finished };
+  const times={}; Object.keys(r.times||{}).forEach(k=>{ const v=r.times[k]; if(typeof v==='number'&&isFinite(v)&&v>=0) times[k]=Math.round(v); });
+  return { id:r.id.slice(0,40), test:r.test, times, date:/^\d{4}-\d{2}-\d{2}$/.test(r.date)?r.date:today(), created:+r.created||Date.now(), updatedAt:+r.updatedAt||0, scores, notes, finished:!!r.finished };
 }
 function mergeBackup(text){
   let d; try{ d=JSON.parse(text); }catch(e){ return { error:'That file is not a PAT Tracker backup.' }; }
@@ -107,12 +108,12 @@ function spark(vals,w,h){
 }
 function trendChart(points, target, unit){
   const W=340,H=170,L=38,Rr=12,Tp=14,B=26;
-  const vals=points.map(p=>p.v), lo=Math.min(...vals,target), hi=Math.max(...vals,target);
-  const pad=Math.max(10,(hi-lo)*.15), mn=Math.max(0,Math.floor((lo-pad)/10)*10), mx=Math.ceil((hi+pad)/10)*10;
+  const vals=points.map(p=>p.v), lo=Math.min(...vals,target==null?vals[0]:target), hi=Math.max(...vals,target==null?vals[0]:target);
+  const step=hi<=20?2:10, pad=Math.max(step,(hi-lo)*.15), mn=Math.max(0,Math.floor((lo-pad)/step)*step), mx=Math.ceil((hi+pad)/step)*step;
   const X=i=>points.length===1?(L+(W-L-Rr)/2):L+i*(W-L-Rr)/(points.length-1), Y=v=>Tp+(1-(v-mn)/(mx-mn))*(H-Tp-B);
   let o='';
   [mn,(mn+mx)/2,mx].forEach(v=>{ o+=`<line x1="${L}" x2="${W-Rr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end" class="ax">${Math.round(v)}</text>`; });
-  o+=`<line x1="${L}" x2="${W-Rr}" y1="${Y(target)}" y2="${Y(target)}" stroke="var(--good)" stroke-dasharray="4 4" stroke-width="1.2"/><text x="${L+4}" y="${Y(target)-5}" class="ax" fill="var(--good)">target ${target}${unit}</text>`;
+  if(target!=null) o+=`<line x1="${L}" x2="${W-Rr}" y1="${Y(target)}" y2="${Y(target)}" stroke="var(--good)" stroke-dasharray="4 4" stroke-width="1.2"/><text x="${L+4}" y="${Y(target)-5}" class="ax" fill="var(--good)">target ${target}${unit}</text>`;
   const P=points.map((p,i)=>[X(i),Y(p.v)]);
   if(P.length>1){ o+=`<polygon points="${L},${H-B} ${P.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')} ${P[P.length-1][0].toFixed(1)},${H-B}" fill="var(--accent)" fill-opacity=".12"/><polyline points="${P.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round"/>`; }
   P.forEach((p,i)=>{ const last=i===P.length-1; o+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${last?4.5:3}" fill="${last?'var(--accent)':'var(--surface)'}" stroke="var(--accent)" stroke-width="2"/>`; });
@@ -135,14 +136,24 @@ function toast(t){ S.toast=t; render(true); clearTimeout(toast.t); toast.t=setTi
 const nav=cur=>`<nav class="tabs" aria-label="Sections">${[['home','Tests'],['history','History'],['insights','Insights']].map(t=>`<button data-act="tab" data-v="${t[0]}" class="${cur===t[0]?'on':''}"${cur===t[0]?' aria-current="page"':''}>${t[1]}</button>`).join('')}</nav>`;
 const topBar=(title,back,right)=>`<header class="top">${back?`<button class="back" data-act="back" aria-label="Back">&#8249;</button>`:''}<h1>${esc(title)}</h1>${right||''}</header>`;
 const band=(test,pts,max)=>{ if(pts==null) return ''; if(test.mode==='sum') return pts>=100?'good':pts>=80?'warn':'bad'; return pts>=80?'good':pts>=60?'warn':'bad'; };
+const bandK=(test,cat,v)=>{ if(v==null) return ''; const k=cat.kind; if(k==='errors') return v===0?'good':v<=2?'warn':'bad'; if(k==='ghost') return v>=100?'good':v>=70?'warn':'bad'; return band(test,v); };
+const isB=t=>t.mode==='basis';
+const fmtT=sec=>{ sec=Math.max(0,Math.round(sec)); const m=Math.floor(sec/60), s=sec%60; return m+':'+String(s).padStart(2,'0'); };
+const parseT=str=>{ const m=String(str).trim().match(/^(\d{1,3})(?:[:.,](\d{1,2}))?$/); if(!m) return null; return (+m[1])*60+(m[2]?+m[2]:0); };
+const tOf=(s,cid)=>{ const base=(s.times&&s.times[cid])||0, on=s.timer&&s.timer.cat===cid; return base+(on?(Date.now()-s.timer.start)/1000:0); };
+const tTotal=(s,t)=>t.cats.filter(c=>c.timed).reduce((x,c)=>x+tOf(s,c.id),0);
+function stopTimer(s){ if(!s.timer) return; s.times=s.times||{}; s.times[s.timer.cat]=Math.round(tOf(s,s.timer.cat)); delete s.timer; }
+setInterval(()=>{ const el=document.getElementById('tval'); if(!el) return; const s=sess(S.view.id); if(s&&s.timer) el.textContent=fmtT(tOf(s,el.dataset.cat)); },500);
+const catSub=c=>{ const k=c.cat.kind||'pat'; if(k==='errors') return c.cat.parts[0].fields.length>1?`${c.cat.parts[0].fields.length} rounds · fewer errors is better`:'fewer errors is better'; if(k==='ghost') return '10 racks · max 150'; if(k==='pat') return `target avg ${c.cat.target} · max ${c.max} pts`; return k==='lower'?'fewer innings is better':'percent of maximum'; };
 
 function vHome(){
   S.sessions=S.sessions.filter(s=>hasData(s)||Date.now()-s.created<5000||S.view.id===s.id);
   const open=S.sessions.filter(s=>hasData(s)&&!s.finished).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,3);
   let h=`<header class="top home"><div><h1>PAT Tracker</h1><p class="sub">Score a test, see where the points went.</p></div><button class="sync" data-act="backup">Backup</button></header><main>`;
-  if(open.length){ h+=`<section><h2>Pick up where you stopped</h2>${open.map(s=>{ const t=testById(s.test), c=calcOf(s); return `<button class="row" data-act="open" data-id="${s.id}"><span class="row-main"><b>${t.name}</b><small>${fmtDate(s.date)} · ${c.doneCount} of ${t.cats.length} drills scored</small></span><span class="num">${c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section>`; }
+  if(open.length){ h+=`<section><h2>Pick up where you stopped</h2>${open.map(s=>{ const t=testById(s.test), c=calcOf(s); return `<button class="row" data-act="open" data-id="${s.id}"><span class="row-main"><b>${t.name}</b><small>${fmtDate(s.date)} · ${c.doneCount} of ${t.cats.length} drills scored</small></span><span class="num">${isB(t)?`${c.errors}<small class="unit">err</small> ${c.total}`:c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section>`; }
   h+=`<section><h2>Start a test</h2>`;
   TESTS.forEach(t=>{
+    if(isB(t)){ h+=homeBasis(t); return; }
     const done=completeOf(t.id), totals=done.map(s=>calcOf(s).total), max=sessionCalc(t,{}).maxTotal;
     const best=totals.length?Math.max(...totals):null, last=totals.length?totals[totals.length-1]:null;
     h+=`<article class="card test"><div class="test-head"><div><h3>${t.name}</h3><p>${t.sub}</p></div>${spark(totals.slice(-8),84,34)}</div>
@@ -153,15 +164,27 @@ function vHome(){
   return h+`</section></main>`+nav('home');
 }
 
+function homeBasis(t){
+  const done=completeOf(t.id).map(calcOf), g=done.map(c=>c.total), e=done.map(c=>c.errors);
+  const best=g.length?Math.max(...g):null, fewest=e.length?Math.min(...e):null, last=done.length?done[done.length-1]:null;
+  return `<article class="card test"><div class="test-head"><div><h3>${t.name}</h3><p>${t.sub}</p></div>${spark(g.slice(-8),84,34)}</div>
+    <dl class="stats"><div><dt>Fewest errors</dt><dd>${fewest==null?'&middot;':fewest}</dd></div><div><dt>Best ghost</dt><dd>${best==null?'&middot;':best}</dd></div><div><dt>Last errors</dt><dd>${last?last.errors:'&middot;'}</dd></div><div><dt>Last ghost</dt><dd>${last?last.total:'&middot;'}</dd></div></dl>
+    <p class="fine">Count your errors in drills 1 to 6, fewer is better. Then play 10 racks against the ghost, out of 150.</p>
+    <button class="btn primary" data-act="start" data-test="${t.id}">Start ${t.name}</button></article>`;
+}
+function heroBasis(s,t,c){
+  const tt=tTotal(s,t);
+  return `<div class="duo"><div><span class="big ${c.errorsComplete?bandK(t,{kind:'errors'},c.errors>5?3:c.errors>2?1:0):''}">${c.errors}</span><span class="of">errors</span></div><div><span class="big">${c.total}</span><span class="of">ghost, of 150</span></div>${tt?`<div><span class="big sm">${fmtT(tt)}</span><span class="of">time, drills 1 to 6</span></div>`:''}</div>`;
+}
 function catRow(test,s,c,i){
   const state=c.complete?'done':c.entered?'part':'todo';
-  const right=c.entered?`<span class="num ${c.complete?band(test,c.pts):''}">${c.pts}</span>`:`<span class="num dim">&middot;</span>`;
-  const sub=(c.cat.kind||'pat')==='pat'?`target avg ${c.cat.target} · max ${c.max} pts`:c.cat.kind==='lower'?'fewer innings is better':'percent of maximum';
+  const right=c.entered?`<span class="num ${c.complete?bandK(test,c.cat,c.pts):''}">${c.pts}</span>`:`<span class="num dim">&middot;</span>`;
+  const tm=c.cat.timed?tOf(s,c.cat.id):0, sub=catSub(c)+(tm?` · ${fmtT(tm)}`:'');
   return `<button class="row" data-act="drill" data-ci="${i}"><span class="idx ${state}">${i+1}</span><span class="row-main"><b>${c.cat.name}</b><small>${c.entered&&!c.complete?`${c.entered} of ${c.n} entered`:sub}</small></span>${right}<span class="chev">&#8250;</span></button>`;
 }
 function vSession(){
   const s=sess(S.view.id), t=testById(s.test), c=calcOf(s);
-  let h=topBar(t.name,true)+`<main><section class="card hero"><div class="hero-num"><span class="big">${c.total}</span><span class="of">${t.mode==='sum'?`of ${t.targetTotal} target`:'out of 100'}</span></div>
+  let h=topBar(t.name,true)+`<main><section class="card hero">${isB(t)?heroBasis(s,t,c):`<div class="hero-num"><span class="big">${c.total}</span><span class="of">${t.mode==='sum'?`of ${t.targetTotal} target`:'out of 100'}</span></div>`}
     <div class="prog"><div style="width:${c.doneCount/t.cats.length*100}%"></div></div>
     <div class="hero-foot"><span>${c.doneCount} of ${t.cats.length} drills scored</span><label class="date">Date <input type="date" id="sess-date" data-chg="date" value="${s.date}"></label></div></section>
     <section><h2>Drills</h2>${c.cats.map((x,i)=>catRow(t,s,x,i)).join('')}</section>
@@ -169,8 +192,14 @@ function vSession(){
   return h;
 }
 
+function counter(key,val){
+  const has=typeof val==='number';
+  return `<div class="counter"><button class="cbtn" data-act="step" data-key="${key}" data-d="-1" aria-label="One fewer"${has&&val>0?'':' disabled'}>&minus;</button><span class="cval num${has?'':' dim'}">${has?val:'&middot;'}</span><button class="cbtn" data-act="step" data-key="${key}" data-d="1" aria-label="One more">+</button>${has?'':`<button class="btn ghost zero" data-act="set" data-key="${key}" data-val="0">No errors</button>`}${has?`<button class="link clear" data-act="clr" data-key="${key}">Clear</button>`:''}</div>`;
+}
 function chips(key,f,val){
-  let o=''; for(let v=f.min;v<=f.max;v++) o+=`<button class="chip${val===v?' on':''}" data-act="set" data-key="${key}" data-val="${v}" aria-pressed="${val===v}">${v}</button>`;
+  if(f.counter) return counter(key,val);
+  const vals=f.values||Array.from({length:f.max-f.min+1},(_,i)=>f.min+i);
+  let o=''; for(const v of vals) o+=`<button class="chip${val===v?' on':''}" data-act="set" data-key="${key}" data-val="${v}" aria-pressed="${val===v}">${v}</button>`;
   return `<div class="chips">${o}</div>`;
 }
 function vDrill(){
@@ -179,22 +208,27 @@ function vDrill(){
   let h=topBar(`${ci+1}. ${cat.name}`,true,`<span class="step">${ci+1}/${t.cats.length}</span>`)+'<main>';
   if(cat.parts.length>1) h+=`<div class="seg" role="tablist">${cat.parts.map((p,i)=>{ const filled=p.fields.every((f,k)=>typeof s.scores[cat.id+'.'+p.id+'.'+k]==='number'); return `<button role="tab" aria-selected="${i===pi}" class="${i===pi?'on':''}${filled?' filled':''}" data-act="part" data-pi="${i}">${p.label}</button>`; }).join('')}</div>`;
   h+=`<h2 class="part-title">${part.title}</h2>`;
-  if(part.diagram) h+=`<figure class="fig">${drawDiagram(part.diagram,mir)}<figcaption><button class="link" data-act="mirror">${mir?'Show original side':'Mirror layout'}</button></figcaption></figure>`;
-  else h+=`<p class="missing">${part.missing}</p>`;
+  if(part.photo) h+=`<figure class="fig"><img class="photo" src="${part.photo}" alt="Set-up photo for ${esc(part.title)}" loading="lazy"></figure>`;
+  else if(part.diagram) h+=`<figure class="fig">${drawDiagram(part.diagram,mir)}<figcaption><button class="link" data-act="mirror">${mir?'Show original side':'Mirror layout'}</button></figcaption></figure>`;
+  else if(part.missing) h+=`<p class="missing">${part.missing}</p>`;
   h+=`<section class="card how">${part.tip?`<div class="tiprow">${tipSvg(part.tip,mir)}<span>Suggested tip position from the book</span></div>`:''}<ul>${part.how.map(x=>`<li>${x}</li>`).join('')}</ul></section>`;
-  h+=`<section class="card entry"><h3>Your score</h3>${part.fields.map((f,i)=>{ const key=cat.id+'.'+part.id+'.'+i; return `<div class="field"><span class="flabel">${f.label}</span>${chips(key,f,s.scores[key])}</div>`; }).join('')}</section>`;
+  if(cat.timed){ const on=s.timer&&s.timer.cat===cat.id, tm=tOf(s,cat.id);
+    h+=`<section class="card timer"><div class="t-row"><div><span class="flabel">Time</span><span class="big sm num" id="tval" data-cat="${cat.id}">${fmtT(tm)}</span></div><div class="t-btns">${on?`<button class="btn danger-solid" data-act="t-stop">Stop</button>`:`<button class="btn primary" data-act="t-start">${tm?'Resume':'Start'}</button>`}</div></div><div class="t-row"><label class="fine" for="tman">Or type it (min:sec)</label><input id="tman" class="tman" data-chg="time" inputmode="decimal" placeholder="8:43" value="${tm&&!on?fmtT(tm):''}"${on?' disabled':''}>${tm&&!on?'<button class="link" data-act="t-reset">Reset</button>':''}</div></section>`; }
+  h+=`<section class="card entry"><h3>${cat.kind==='errors'?'Your errors':'Your score'}</h3>${part.fields.map((f,i)=>{ const key=cat.id+'.'+part.id+'.'+i; return `<div class="field"><span class="flabel">${f.label}</span>${chips(key,f,s.scores[key])}</div>`; }).join('')}</section>`;
   // live summary
   const prev=sorted(t.id).filter(x=>x.id!==s.id).map(x=>catCalc(cat,x.scores)).filter(x=>x.complete).map(x=>x.pts);
-  const best=prev.length?Math.max(...prev):null, last=prev.length?prev[prev.length-1]:null;
+  const lower=kind==='errors', best=prev.length?(lower?Math.min(...prev):Math.max(...prev)):null, last=prev.length?prev[prev.length-1]:null;
   let avgTxt='', scale='';
   if(c.entered){
     if(kind==='pat'){ avgTxt=`average ${c.avg.toFixed(2)} against a target of ${cat.target}`; const sm=Math.max(c.max,100); scale=`<div class="meter"><div class="fill ${band(t,c.pts)}" style="width:${Math.min(100,c.pts/sm*100)}%"></div><i class="tick" style="left:${100/sm*100}%"></i></div><div class="meter-lab"><span>0</span><span style="left:${100/sm*100}%" class="abs">target 100</span><span>max ${c.max}</span></div>`; }
     else if(kind==='pct') avgTxt=`average ${c.avg.toFixed(2)} of ${cat.cap}`;
     else if(kind==='lower') avgTxt=`average ${c.avg.toFixed(1)} innings`;
+    else if(kind==='errors') avgTxt=c.n>1?`${c.sum} errors in total`:'';
+    else if(kind==='ghost'){ const v=part.fields.map((f,i)=>s.scores[cat.id+'.a.'+i]).filter(x=>typeof x==='number'); avgTxt=`average ${c.avg.toFixed(1)} per rack, ${v.filter(x=>x===15).length} break and runs`; scale=`<div class="meter"><div class="fill ${c.complete?bandK(t,cat,c.pts):''}" style="width:${Math.min(100,c.pts/150*100)}%"></div></div><div class="meter-lab"><span>0</span><span>150</span></div>`; }
     else avgTxt=`${c.sum} of ${c.complete?cat.cap:c.entered*7} so far`;
   }
-  h+=`<section class="card summary"><div class="sum-top"><div><span class="big ${c.complete?band(t,c.pts):''}">${c.entered?c.pts:'&middot;'}</span><span class="of">${kind==='pat'?'points':'percent'}${c.entered&&!c.complete?' so far':''}</span></div><div class="sum-side">${best!=null?`<span>Best <b>${best}</b></span><span>Last <b>${last}</b></span>`:'<span>First time on this drill</span>'}${c.complete&&best!=null&&c.pts>best?'<span class="pill good">New best</span>':''}</div></div>${avgTxt?`<p class="fine">${c.entered} of ${c.n} entered, ${avgTxt}.</p>`:`<p class="fine">Tap a number for each line above. Tap it again to clear it.</p>`}${scale}</section>`;
-  h+=`<section class="card"><label class="flabel" for="note">Notes for this drill</label><textarea id="note" data-inp="note" rows="2" placeholder="What cost you points?">${esc(s.notes[cat.id]||'')}</textarea></section>`;
+  h+=`<section class="card summary"><div class="sum-top"><div><span class="big ${c.complete?bandK(t,cat,c.pts):''}">${c.entered?c.pts:'&middot;'}</span><span class="of">${kind==='pat'||kind==='ghost'?'points':kind==='errors'?(c.pts===1?'error':'errors'):'percent'}${c.entered&&!c.complete?' so far':''}</span></div><div class="sum-side">${best!=null?`<span>${lower?'Fewest':'Best'} <b>${best}</b></span><span>Last <b>${last}</b></span>`:'<span>First time on this drill</span>'}${c.complete&&best!=null&&(lower?c.pts<best:c.pts>best)?'<span class="pill good">New best</span>':''}</div></div>${avgTxt?`<p class="fine">${c.entered} of ${c.n} entered, ${avgTxt}.</p>`:c.entered?'':`<p class="fine">${kind==='errors'?'Use + and minus to count errors as you play.':'Tap a number for each line above. Tap it again to clear it.'}</p>`}${scale}</section>`;
+  h+=`<section class="card"><label class="flabel" for="note">Notes for this drill</label><textarea id="note" data-inp="note" rows="2" placeholder="${kind==='errors'?'What caused the errors?':'What cost you points?'}">${esc(s.notes[cat.id]||'')}</textarea></section>`;
   const lastPart=pi===cat.parts.length-1, lastCat=ci===t.cats.length-1;
   h+=`</main><footer class="pager"><button class="btn ghost" data-act="prev"${ci===0&&pi===0?' disabled':''}>Back</button><button class="btn ghost" data-act="list">All drills</button><button class="btn primary" data-act="next">${lastPart&&lastCat?'Result':'Next'}</button></footer>`;
   return h;
@@ -202,6 +236,7 @@ function vDrill(){
 
 function vResult(){
   const s=sess(S.view.id), t=testById(s.test), c=calcOf(s);
+  if(isB(t)) return vResultBasis(s,t,c);
   const others=completeOf(t.id).filter(x=>x.id!==s.id), before=others.filter(x=>x.date<s.date||(x.date===s.date&&x.created<s.created));
   const prev=before.length?calcOf(before[before.length-1]):null, bestOther=others.length?Math.max(...others.map(x=>calcOf(x).total)):null;
   const done=c.cats.filter(x=>x.complete), sm=Math.max(100,...c.cats.map(x=>x.max));
@@ -226,11 +261,31 @@ function vResult(){
   return h;
 }
 
+function vResultBasis(s,t,c){
+  const others=completeOf(t.id).filter(x=>x.id!==s.id), before=others.filter(x=>x.date<s.date||(x.date===s.date&&x.created<s.created));
+  const prev=before.length?calcOf(before[before.length-1]):null, oc=others.map(calcOf);
+  let h=topBar(`${t.name} result`,true)+'<main>';
+  h+=`<section class="card hero"><p class="eyebrow">${fmtDate(s.date)}${c.complete?'':` · ${c.doneCount} of ${t.cats.length} drills`}</p>${heroBasis(s,t,c)}<div class="pills">`;
+  if(c.complete&&prev){ const de=c.errors-prev.errors, dg=c.total-prev.total; h+=`<span class="pill ${de<=0?'good':'bad'}">${de>0?'+':''}${de} errors vs previous</span><span class="pill ${dg>=0?'good':'bad'}">${dg>0?'+':''}${dg} ghost vs previous</span>`; }
+  if(c.complete&&oc.length&&c.errors<Math.min(...oc.map(x=>x.errors))) h+=`<span class="pill good">Fewest errors yet</span>`;
+  if(c.complete&&oc.length&&c.total>Math.max(...oc.map(x=>x.total))) h+=`<span class="pill good">Best ghost score</span>`;
+  if(!c.complete) h+=`<span class="pill warn">Partial test</span>`;
+  h+=`</div></section>`;
+  const ec=c.cats.filter(x=>x.kind==='errors'), mx=Math.max(4,...ec.map(x=>x.pts||0));
+  h+=`<section class="card"><h3>Errors by drill</h3><div class="bars">${ec.map((x,i)=>{ const pv=prev?prev.cats[i]:null, d=x.complete&&pv&&pv.complete?x.pts-pv.pts:null, tm=tOf(s,x.cat.id);
+    return `<button class="bar" data-act="drill" data-ci="${i}"><span class="bar-name">${i+1}. ${x.cat.name}${tm?` <small class="dim">${fmtT(tm)}</small>`:''}</span><span class="bar-val num ${x.complete?bandK(t,x.cat,x.pts):'dim'}">${x.entered?x.pts:'&middot;'}${d!=null&&d!==0?`<small class="${d<0?'up':'down'}">${d>0?'+':''}${d}</small>`:''}</span><span class="track"><span class="cap" style="width:100%"></span>${x.entered&&x.pts?`<span class="fill ${bandK(t,x.cat,x.pts)}" style="width:${Math.min(100,x.pts/mx*100)}%"></span>`:''}</span></button>`; }).join('')}</div></section>`;
+  const g=c.cats.find(x=>x.kind==='ghost'), gi=c.cats.indexOf(g), racks=g.cat.parts[0].fields.map((f,i)=>s.scores[g.cat.id+'.a.'+i]);
+  h+=`<section class="card"><button class="row plain" data-act="drill" data-ci="${gi}"><span class="row-main"><b>Ghost 9-Ball</b><small>${racks.filter(v=>v===15).length} break and runs · ${racks.filter(v=>v===10).length} runs after ball in hand</small></span><span class="num">${g.entered?g.pts:'&middot;'}</span><span class="chev">&#8250;</span></button><div class="racks">${racks.map((v,i)=>`<span class="rk ${v===15?'r15':v===10?'r10':typeof v==='number'?'rx':'re'}"><small>${i+1}</small>${typeof v==='number'?v:'&middot;'}</span>`).join('')}</div></section>`;
+  const notes=t.cats.filter(k=>s.notes[k.id]);
+  if(notes.length) h+=`<section class="card"><h3>Your notes</h3>${notes.map(k=>`<p class="noteline"><b>${k.name}</b> ${esc(s.notes[k.id])}</p>`).join('')}</section>`;
+  h+=`<div class="actions"><button class="btn primary" data-act="edit">Edit scores</button><button class="btn" data-act="copy">Copy summary</button><button class="btn ghost danger" data-act="askdel">Delete this test</button></div></main>`;
+  return h;
+}
 function vHistory(){
   const all=sorted().reverse();
   let h=topBar('History')+'<main>';
   if(!all.length) h+=`<p class="empty">No tests yet. Score your first one from the Tests tab and it shows up here.</p>`;
-  else h+=`<section>${all.map(s=>{ const t=testById(s.test), c=calcOf(s); return `<button class="row" data-act="result" data-id="${s.id}"><span class="tag">${t.name}</span><span class="row-main"><b>${fmtDate(s.date)}</b><small>${c.complete?'Full test':`${c.doneCount} of ${t.cats.length} drills`}${s.finished?'':' · in progress'}</small></span><span class="num">${c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section>`;
+  else h+=`<section>${all.map(s=>{ const t=testById(s.test), c=calcOf(s); return `<button class="row" data-act="result" data-id="${s.id}"><span class="tag">${t.name}</span><span class="row-main"><b>${fmtDate(s.date)}</b><small>${c.complete?'Full test':`${c.doneCount} of ${t.cats.length} drills`}${s.finished?'':' · in progress'}</small></span><span class="num">${isB(t)?`${c.errors}<small class="unit">err</small> ${c.total}`:c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section>`;
   return h+'</main>'+nav('history');
 }
 
@@ -239,6 +294,7 @@ function vInsights(){
   const done=completeOf(tid), any=sorted(tid);
   let h=topBar('Insights')+`<main><div class="seg">${TESTS.map(x=>`<button class="${x.id===tid?'on':''}" data-act="instest" data-test="${x.id}">${x.short||x.name}</button>`).join('')}</div>`;
   if(!any.length){ return h+`<p class="empty">Nothing recorded for ${t.name} yet. After your first test this page shows your trend, your best per drill and what to practise next.</p></main>`+nav('insights'); }
+  if(isB(t)) return h+insightsBasis(t,done,any)+'</main>'+nav('insights');
   if(done.length){ const pts=done.map(s=>({ v:calcOf(s).total, label:fmtDate(s.date) })), vals=pts.map(p=>p.v);
     h+=`<section class="card"><h3>Total score, full tests</h3>${trendChart(pts,t.mode==='sum'?t.targetTotal:80,'')}<dl class="stats"><div><dt>Tests</dt><dd>${vals.length}</dd></div><div><dt>Best</dt><dd>${Math.max(...vals)}</dd></div><div><dt>Average</dt><dd>${Math.round(vals.reduce((a,b)=>a+b,0)/vals.length)}</dd></div><div><dt>Last</dt><dd>${vals[vals.length-1]}</dd></div></dl></section>`;
   } else h+=`<p class="empty">Finish all ${t.cats.length} drills in one sitting to start the total score trend. Drill figures below already count.</p>`;
@@ -250,12 +306,28 @@ function vInsights(){
   return h+'</main>'+nav('insights');
 }
 
+function insightsBasis(t,done,any){
+  let h='';
+  if(done.length){ const cs=done.map(s=>({ c:calcOf(s), label:fmtDate(s.date) }));
+    const g=cs.map(x=>({ v:x.c.total, label:x.label })), e=cs.map(x=>({ v:x.c.errors, label:x.label }));
+    const gv=g.map(p=>p.v), ev=e.map(p=>p.v), avg=a=>Math.round(a.reduce((x,y)=>x+y,0)/a.length*10)/10;
+    h+=`<section class="card"><h3>Errors, drills 1 to 6</h3><p class="fine">Lower is better.</p>${trendChart(e,null,'')}<dl class="stats"><div><dt>Tests</dt><dd>${ev.length}</dd></div><div><dt>Fewest</dt><dd>${Math.min(...ev)}</dd></div><div><dt>Average</dt><dd>${avg(ev)}</dd></div><div><dt>Last</dt><dd>${ev[ev.length-1]}</dd></div></dl></section>`;
+    h+=`<section class="card"><h3>Ghost 9-Ball</h3>${trendChart(g,null,'')}<dl class="stats"><div><dt>Tests</dt><dd>${gv.length}</dd></div><div><dt>Best</dt><dd>${Math.max(...gv)}</dd></div><div><dt>Average</dt><dd>${avg(gv)}</dd></div><div><dt>Last</dt><dd>${gv[gv.length-1]}</dd></div></dl></section>`;
+  } else h+=`<p class="empty">Finish all ${t.cats.length} parts in one sitting to start the trend charts. Drill figures below already count.</p>`;
+  const rows=t.cats.map((cat,i)=>{ const v=any.map(s=>catCalc(cat,s.scores)).filter(x=>x.complete).map(x=>x.pts), l3=v.slice(-3), low=cat.kind==='errors';
+    return { cat, i, v, best:v.length?(low?Math.min(...v):Math.max(...v)):null, last:v.length?v[v.length-1]:null, recent:l3.length?Math.round(l3.reduce((a,b)=>a+b,0)/l3.length*10)/10:null }; });
+  const worst=rows.filter(r=>r.cat.kind==='errors'&&r.recent>0).sort((a,b)=>b.recent-a.recent);
+  if(worst.length) h+=`<section class="card"><h3>Practise next</h3><p class="fine">Most errors on average over your last three attempts at each drill.</p><ol class="rank">${worst.slice(0,3).map(r=>`<li><span>${r.cat.name}</span><b class="num ${bandK(t,r.cat,Math.round(r.recent))}">${r.recent}</b></li>`).join('')}</ol></section>`;
+  h+=`<section class="card"><h3>Every drill</h3><div class="tbl"><div class="tr th"><span>Drill</span><span>Last</span><span>Best</span><span>Trend</span></div>${rows.map(r=>`<div class="tr"><span>${r.i+1}. ${r.cat.name}</span><span class="num ${r.last!=null?bandK(t,r.cat,r.last):'dim'}">${r.last==null?'&middot;':r.last}</span><span class="num">${r.best==null?'&middot;':r.best}</span><span>${spark(r.v.slice(-8),64,22)}</span></div>`).join('')}</div><p class="fine">Best means fewest errors for drills 1 to 6.</p></section>`;
+  return h;
+}
 function vSheet(){ const sh=S.sheet;
   if(sh.kind==='backup'){ const n=S.sessions.filter(hasData).length;
     return `<div class="scrim" data-act="cancel"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Backup"><h3>Backup and restore</h3><p>Your scores are stored on this phone. Save a backup file now and then (to Files, iCloud Drive or mail it to yourself), and restore it here on a new phone.</p><p class="fine">${n} test${n===1?'':'s'} on this phone. Last backup: ${S.prefs.lastBackup?fmtDate(S.prefs.lastBackup):'never'}.</p><div class="actions"><button class="btn primary" data-act="bk-save"${n?'':' disabled'}>Save backup file</button><label class="btn file-btn" for="bk-file">Restore from a backup file</label><input type="file" id="bk-file" accept=".json,application/json" hidden><button class="btn ghost" data-act="cancel">Close</button></div></div>`; }
   return `<div class="scrim" data-act="cancel"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(sh.title)}"><h3>${esc(sh.title)}</h3><p>${esc(sh.text)}</p><div class="actions"><button class="btn danger-solid" data-act="${sh.act}">${esc(sh.ok)}</button><button class="btn" data-act="cancel">Keep it</button></div></div>`; }
 
 function summaryText(s){ const t=testById(s.test), c=calcOf(s);
+  if(isB(t)){ const tt=tTotal(s,t); return [`${t.name}, ${fmtDate(s.date)}`, `Errors ${c.errors}, ghost ${c.total} of 150${tt?`, time ${fmtT(tt)}`:''}`, ...c.cats.map((x,i)=>`${i+1}. ${x.cat.name}: ${x.entered?x.pts:'not scored'}${x.cat.timed&&tOf(s,x.cat.id)?` (${fmtT(tOf(s,x.cat.id))})`:''}`)].join('\n'); }
   return [`${t.name}, ${fmtDate(s.date)}`, t.mode==='sum'?`Total ${c.total} (target ${t.targetTotal}, ceiling ${c.maxTotal})`:`Average ${c.total} percent`, ...c.cats.map((x,i)=>`${i+1}. ${x.cat.name}: ${x.entered?x.pts:'not scored'}`)].join('\n'); }
 
 /* ---------- Events ---------- */
@@ -269,6 +341,11 @@ document.addEventListener('click',e=>{
   else if(a==='drill') go({ name:'drill', id:v.id, ci:+b.dataset.ci, pi:0, from:v.name });
   else if(a==='part'){ v.pi=+b.dataset.pi; render(true); }
   else if(a==='set'){ const k=b.dataset.key, val=+b.dataset.val; if(s.scores[k]===val) delete s.scores[k]; else s.scores[k]=val; if(s.finished&&!hasData(s)) s.finished=false; touch(s); render(true); }
+  else if(a==='step'){ const k=b.dataset.key, cur=typeof s.scores[k]==='number'?s.scores[k]:0; s.scores[k]=Math.max(0,cur+(+b.dataset.d)); touch(s); render(true); }
+  else if(a==='clr'){ delete s.scores[b.dataset.key]; touch(s); render(true); }
+  else if(a==='t-start'){ const cid=testById(s.test).cats[v.ci].id; stopTimer(s); s.timer={ cat:cid, start:Date.now() }; touch(s); render(true); }
+  else if(a==='t-stop'){ stopTimer(s); touch(s); render(true); }
+  else if(a==='t-reset'){ const cid=testById(s.test).cats[v.ci].id; if(s.times) delete s.times[cid]; touch(s); render(true); }
   else if(a==='mirror'){ S.prefs.mirror=!S.prefs.mirror; persist(); render(true); }
   else if(a==='list') go({ name:'session', id:v.id });
   else if(a==='prev'||a==='next'){ const t=testById(s.test), d=a==='next'?1:-1; let ci=v.ci, pi=(v.pi||0)+d;
@@ -286,7 +363,8 @@ document.addEventListener('click',e=>{
   else if(a==='copy'){ const txt=summaryText(s); try{ navigator.clipboard.writeText(txt).then(()=>toast('Summary copied'),()=>toast('Copy was blocked by the browser')); }catch(err){ toast('Copy was blocked by the browser'); } }
 });
 document.addEventListener('change',e=>{ if(e.target.id==='bk-file'&&e.target.files&&e.target.files[0]){ const f=e.target.files[0]; f.text().then(t=>{ const r=mergeBackup(t); S.sheet=null; if(r.error) toast(r.error); else { toast(r.added||r.updated?`Restored ${r.added} new, ${r.updated} updated`:'Nothing new in that backup'); } render(true); }); return; }
-  if(e.target.dataset.chg==='date'&&e.target.value){ const s=sess(S.view.id); s.date=e.target.value; touch(s); } });
+  if(e.target.dataset.chg==='date'&&e.target.value){ const s=sess(S.view.id); s.date=e.target.value; touch(s); }
+  if(e.target.dataset.chg==='time'){ const s=sess(S.view.id), cid=testById(s.test).cats[S.view.ci].id, v=e.target.value.trim(); s.times=s.times||{}; if(!v) delete s.times[cid]; else { const sec=parseT(v); if(sec==null){ toast('Type the time as minutes:seconds, like 8:43'); return; } s.times[cid]=sec; } touch(s); render(true); } });
 let noteT; document.addEventListener('input',e=>{ if(e.target.dataset.inp==='note'){ const s=sess(S.view.id), t=testById(s.test), cat=t.cats[S.view.ci], val=e.target.value; clearTimeout(noteT); noteT=setTimeout(()=>{ if(val.trim()) s.notes[cat.id]=val; else delete s.notes[cat.id]; touch(s); },500); } });
 window.addEventListener('hashchange',()=>{ const n=location.hash.slice(1); if(['home','history','insights'].includes(n)&&S.view.name!==n&&['home','history','insights'].includes(S.view.name)) go({ name:n }); });
 

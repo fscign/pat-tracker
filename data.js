@@ -206,12 +206,21 @@ const TESTS = [
     { id:'b', label:'Balls', title:'Workout: object balls potted', diagram:null, missing:'The eight workout shots (PAT 3, page 48) were not in the scanned file. Set them up from the book.', fields:Array.from({length:8},(_,i)=>({label:'Shot '+(i+1), max:7, min:0})), how:['7 attempts at each of the 8 shots. Enter how many times the object ball went in.'] },
     { id:'p', label:'Position', title:'Workout: positions reached', diagram:null, missing:'The eight workout shots (PAT 3, page 48) were not in the scanned file. Set them up from the book.', fields:Array.from({length:8},(_,i)=>({label:'Shot '+(i+1), max:7, min:0})), how:['Enter how many times you also reached position. A position point only counts when the ball was potted.','The book puts the pass mark at 80 percent: 44.8 of 56 for each line.'] } ] },
 ]},
+{ id:'basis', name:'Basis-Check', short:'Basis', sub:'Six drills scored by errors, then 10 racks against the ghost', mode:'basis', cats:[
+  { id:'b1', name:'Warm Up Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'Warm Up Drill', photo:'basis-1.jpg', fields:[{ label:'Errors, both rounds', counter:1 }], how:['Spread all 15 balls at least one diamond off every cushion.','Pocket every ball without the cue ball touching a rail. Object balls may touch each other and the rails.','A miss or the cue ball touching a rail is an error. Take ball in hand after every error.','Play it twice and enter the errors from both rounds together.'] }] },
+  { id:'b2', name:'Technique Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'Technique Drill', photo:'basis-2.jpg', fields:[{ label:'Errors', counter:1 }], how:['Five object balls on the third diamond on each side.','Ball in hand two diamonds away. Pot the ball and follow the cue ball into the same pocket.','If both balls do not drop, or the cue ball does not follow in, it is an error. Put the ball back and play it again.'] }] },
+  { id:'b3', name:'S Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'S Drill', photo:'basis-3.jpg', fields:[{ label:'Errors, round 1', counter:1 },{ label:'Errors, round 2', counter:1 }], how:['Five balls on the second diamond, about a quarter diamond off the rail.','Pot them from the outside in. For every position the cue ball goes exactly two rails: short rail, then long rail.','A miss or touching another ball is an error. Take ball in hand after an error.','The score sheet has two boxes for this drill, one per round.'] }] },
+  { id:'b4', name:'Quadrant Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'Quadrant Drill', photo:'basis-4.jpg', fields:[{ label:'Errors, round 1', counter:1 },{ label:'Errors, round 2', counter:1 }], how:['All 15 balls at random around the second diamond, about half a ball off the rail.','Pot them in rotation, 1 to 15, without touching another ball.','The cue ball has to stay in that quadrant: it may never pass the second diamond.','A miss or touching another object ball is an error. Take ball in hand after an error. Play it twice.'] }] },
+  { id:'b5', name:'Snooker Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'Snooker Drill', photo:'basis-5.jpg', fields:[{ label:'Errors', counter:1 }], how:['Line the balls up as in the photo: even numbers on one side, odd on the other, the 15 on the spot.','Pot 1 to 14 in rotation, and pot the 15 between every ball, re-spotting it each time.','Balls on the left go in the left pocket, balls on the right in the right pocket. The cue ball may not cross the line of balls.','A miss, touching a ball or crossing the line is an error. Take ball in hand after an error.'] }] },
+  { id:'b6', name:'10 Ball Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'10 Ball Drill', photo:'basis-6.jpg', fields:[{ label:'Errors, round 1', counter:1 },{ label:'Errors, round 2', counter:1 }], how:['Even balls on one side, odd balls on the other, in random order.','Pot them from 1 to 10.','A miss or touching a ball is an error. Take ball in hand after an error.','The score sheet has two boxes for this drill, one per round.'] }] },
+  { id:'b7', name:'Ghost 9-Ball', kind:'ghost', parts:[{ id:'a', title:'Ghost 9-Ball, 10 racks', diagram:null, fields:Array.from({length:10},(_,i)=>({ label:'Rack '+(i+1), values:[0,1,2,3,4,5,6,7,8,9,10,15] })), how:['Ten racks of 9-ball. The 9 on the spot, kitchen rule.','Break and run out: 15 points.','Ball in hand after the break and run out: 10 points (the 9 counts 2).','A dry break or a foul on the break does not matter, you take ball in hand.','After a miss: 9 minus the balls left on the table. Three left means 9 minus 3, so 6.'] }] },
+]},
 ];
 
 /* ---------- Scoring (pure) ---------- */
 function fieldKeys(cat){ const k=[]; cat.parts.forEach(p=>p.fields.forEach((f,i)=>k.push({ key:cat.id+'.'+p.id+'.'+i, f, part:p }))); return k; }
 function catCap(cat){ const k=fieldKeys(cat); return k.reduce((s,x)=>s+x.f.max,0)/k.length; }
-function catMaxPts(cat){ const kind=cat.kind||'pat'; return kind==='pat' ? Math.round(catCap(cat)*cat.factor) : 100; }
+function catMaxPts(cat){ const kind=cat.kind||'pat'; if(kind==='errors') return null; if(kind==='ghost') return 150; return kind==='pat' ? Math.round(catCap(cat)*cat.factor) : 100; }
 function catCalc(cat, scores){
   const keys=fieldKeys(cat), vals=keys.map(k=>scores[k.key]).filter(v=>typeof v==='number');
   const n=keys.length, entered=vals.length, complete=entered===n, sum=vals.reduce((a,b)=>a+b,0);
@@ -224,12 +233,18 @@ function catCalc(cat, scores){
     else if(kind==='pct') pts=Math.round(avg/cat.cap*100);
     else if(kind==='lower') pts=Math.round(cat.best/avg*100);
     else if(kind==='sum'){ avg=sum; pts=Math.round(sum/(complete?cat.cap:entered*7)*100); }
+    else if(kind==='errors'||kind==='ghost') pts=sum;
   }
-  return { n, entered, complete, sum, avg, pts, max:catMaxPts(cat) };
+  return { n, entered, complete, sum, avg, pts, max:catMaxPts(cat), kind };
 }
 function sessionCalc(test, scores){
   const cats=test.cats.map(c=>({ cat:c, ...catCalc(c,scores) }));
   const done=cats.filter(c=>c.complete), started=cats.filter(c=>c.entered>0);
+  if(test.mode==='basis'){
+    const ec=cats.filter(c=>c.kind==='errors'), gc=cats.find(c=>c.kind==='ghost');
+    const errors=ec.reduce((s,c)=>s+(c.entered?c.sum:0),0);
+    return { cats, total:gc.entered?gc.sum:0, errors, errorsComplete:ec.every(c=>c.complete), ghostComplete:gc.complete, maxTotal:150, doneCount:done.length, startedCount:started.length, complete:done.length===test.cats.length };
+  }
   const sum=done.reduce((s,c)=>s+c.pts,0);
   const total = test.mode==='sum' ? sum : (done.length ? Math.round(sum/done.length) : 0);
   const maxTotal = test.mode==='sum' ? test.cats.reduce((s,c)=>s+catMaxPts(c),0) : 100;
