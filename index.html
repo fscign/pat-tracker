@@ -195,10 +195,29 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 .sum-row>div:first-child{display:flex;align-items:baseline;gap:8px}
 .photo{aspect-ratio:3/4;object-fit:cover}
 .cbtn{font-family:var(--body)}
+.hbtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.form{display:flex;flex-direction:column;gap:6px}
+.form label{font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:6px}
+.form input{font:inherit;font-size:17px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%}
+.form .btn{margin-top:10px}
+.inrow{display:flex;gap:8px}
+.inrow .btn{margin-top:0}
+.err{color:var(--bad);font-size:14px;font-weight:600}
+.okmsg{color:var(--good);font-size:14px;font-weight:600}
+.shared-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.shared-list li{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:6px}
+.link.danger{color:var(--bad)}
+.sheet{max-height:92vh;overflow:auto}
+.vals{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px}
+.vv{display:flex;flex-direction:column;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px 4px}
+.vv small{font-size:11px;color:var(--muted);text-align:center}
+.vv b{font-size:20px}
+.shared-cat .entry-head{align-items:center}
 </style>
 </head>
 <body>
 <div id="app"></div>
+<script src="firebase-config.js"></script>
 <script>
 /* ---------- Table geometry helpers (book coordinates: x 0..8 foot to head, y 0..4) ---------- */
 const F = 0.11, HB = 0.22, W1 = 0.33;
@@ -518,13 +537,71 @@ function persist(){ try{ localStorage.setItem(LS, JSON.stringify({ sessions:S.se
 const today=()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 const fmtDate=iso=>{ const p=iso.split('-'); return new Date(+p[0],+p[1]-1,+p[2]).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); };
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function touch(s){ s.updatedAt=Date.now(); persist(); }
+function touch(s){ s.updatedAt=Date.now(); persist(); queueSync(s.id); }
 function newSession(testId){ const s={ id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7), test:testId, date:today(), created:Date.now(), updatedAt:Date.now(), scores:{}, notes:{}, finished:false }; S.sessions.push(s); persist(); return s; }
-function removeSession(id){ S.sessions=S.sessions.filter(s=>s.id!==id); S.tomb.push(id); persist(); }
+function removeSession(id){ S.sessions=S.sessions.filter(s=>s.id!==id); S.tomb.push(id); persist(); queueSync(id); }
 const hasData=s=>Object.keys(s.scores).length>0||Object.keys(s.times||{}).length>0||!!s.timer;
 function sorted(testId){ return S.sessions.filter(s=>(!testId||s.test===testId)&&hasData(s)).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.created-b.created); }
 const calcOf=s=>sessionCalc(testById(s.test), s.scores);
 const completeOf=testId=>sorted(testId).filter(s=>calcOf(s).complete);
+
+
+/* ---------- Account sync (Firebase, optional) ---------- */
+const C=()=>window.Cloud&&window.Cloud.available?window.Cloud:null;
+const me=()=>{ const c=C(); return c&&c.user?c.user:null; };
+const dirtyList=()=>S.prefs.dirty||(S.prefs.dirty=[]);
+let syncT=null, syncing=false, lastPull=0;
+function setNet(v){ S.net=v; const el=document.getElementById('netstate'); if(el) el.textContent=netText(); }
+const netText=()=>!me()?'':S.net==='offline'?'Offline, will sync later':S.net==='syncing'?'Syncing':'Synced';
+function queueSync(id){ if(!me()) return; const d=dirtyList(); if(!d.includes(id)) d.push(id); persist(); clearTimeout(syncT); syncT=setTimeout(flush,1200); }
+async function flush(){
+  const c=C(); if(!c||!c.user||syncing) return; syncing=true; setNet('syncing');
+  try{
+    for(const id of [...dirtyList()]){
+      const s=sess(id);
+      try{
+        if(s&&hasData(s)) await c.put(Object.assign({},s,{ times:s.timer?Object.assign({},s.times,{ [s.timer.cat]:Math.round(tOf(s,s.timer.cat)) }):(s.times||{}) }));
+        else if(!s) await c.del(id);
+        S.prefs.dirty=dirtyList().filter(x=>x!==id); persist();
+      }catch(e){
+        if(!s&&e&&(e.code==='permission-denied'||e.code==='not-found')){ S.prefs.dirty=dirtyList().filter(x=>x!==id); persist(); continue; }
+        throw e;
+      }
+    }
+    setNet('ok');
+  }catch(e){ setNet('offline'); }
+  syncing=false;
+}
+async function pullAll(){
+  const c=C(); if(!c||!c.user) return;
+  try{
+    setNet('syncing');
+    const remote=await c.pullOwn(); lastPull=Date.now();
+    const ids=new Set(remote.map(r=>r.id));
+    remote.forEach(r0=>{ const r=cleanSession(r0); if(!r) return;
+      if(S.tomb.includes(r.id)){ queueSync(r.id); return; }
+      const l=sess(r.id);
+      if(!l) S.sessions.push(r);
+      else if(r.updatedAt>l.updatedAt){ const tm=l.timer; Object.assign(l,r); if(tm) l.timer=tm; }
+      else if(l.updatedAt>r.updatedAt) queueSync(l.id); });
+    S.sessions.forEach(s=>{ if(hasData(s)&&!ids.has(s.id)) queueSync(s.id); });
+    persist(); setNet('ok'); await flush();
+    if(['home','history','insights','result','session'].includes(S.view.name)) render(true);
+  }catch(e){ setNet('offline'); }
+}
+function onUser(u){
+  if(u){
+    if(S.prefs.owner&&S.prefs.owner!==u.uid){ S.sessions=[]; S.tomb=[]; S.prefs.dirty=[]; }
+    S.prefs.owner=u.uid; persist(); pullAll();
+  }
+  if(S.sheet&&S.sheet.kind==='account') S.sheet={ kind:'account', mode:u?'profile':'signin' };
+  render(true);
+}
+function hookCloud(){ const c=C(); if(c&&!hookCloud.done){ hookCloud.done=true; c.onChange(onUser); if(c.user){ onUser(c.user); return; } } render(true); }
+window.addEventListener('cloud-loaded',hookCloud);
+window.addEventListener('online',()=>flush());
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&me()){ if(Date.now()-lastPull>300000) pullAll(); else flush(); } });
+const authMsg=e=>{ const m={ 'auth/email-already-in-use':'There is already an account with that email. Sign in instead.', 'auth/invalid-email':'That email address does not look right.', 'auth/weak-password':'Use a password of at least 6 characters.', 'auth/invalid-credential':'Wrong email or password.', 'auth/wrong-password':'Wrong email or password.', 'auth/user-not-found':'Wrong email or password.', 'auth/too-many-requests':'Too many tries. Wait a few minutes and try again.', 'auth/network-request-failed':'No connection. Try again when you are online.', 'pat/bad-nick':'Nickname: 3 to 20 letters, digits, dot, dash or underscore.', 'pat/nick-taken':'That nickname is taken. Pick another one.' }; return m[e&&e.code]||'Something went wrong. Try again.'; };
 
 /* ---------- Backup and restore (scores live on this phone) ---------- */
 function backupJSON(){ return JSON.stringify({ app:'pat-tracker', v:1, exported:new Date().toISOString(), sessions:S.sessions.filter(hasData).map(s=>{ const c=Object.assign({},s); if(c.timer){ c.times=Object.assign({},c.times); c.times[c.timer.cat]=Math.round(tOf(s,c.timer.cat)); delete c.timer; } return c; }) }); }
@@ -533,7 +610,8 @@ function cleanSession(r){
   const scores={}; Object.keys(r.scores||{}).forEach(k=>{ const v=r.scores[k]; if(typeof v==='number'&&isFinite(v)) scores[k]=v; });
   const notes={}; Object.keys(r.notes||{}).forEach(k=>{ if(typeof r.notes[k]==='string') notes[k]=r.notes[k].slice(0,2000); });
   const times={}; Object.keys(r.times||{}).forEach(k=>{ const v=r.times[k]; if(typeof v==='number'&&isFinite(v)&&v>=0) times[k]=Math.round(v); });
-  return { id:r.id.slice(0,40), test:r.test, times, date:/^\d{4}-\d{2}-\d{2}$/.test(r.date)?r.date:today(), created:+r.created||Date.now(), updatedAt:+r.updatedAt||0, scores, notes, finished:!!r.finished };
+  const sharedWith=Array.isArray(r.sharedWith)?r.sharedWith.filter(x=>typeof x==='string').slice(0,50):[]; const sharedNames={}; sharedWith.forEach(u=>{ if(r.sharedNames&&typeof r.sharedNames[u]==='string') sharedNames[u]=r.sharedNames[u].slice(0,40); });
+  return { id:r.id.slice(0,40), test:r.test, times, sharedWith, sharedNames, date:/^\d{4}-\d{2}-\d{2}$/.test(r.date)?r.date:today(), created:+r.created||Date.now(), updatedAt:+r.updatedAt||0, scores, notes, finished:!!r.finished };
 }
 function mergeBackup(text){
   let d; try{ d=JSON.parse(text); }catch(e){ return { error:'That file is not a PAT Tracker backup.' }; }
@@ -583,7 +661,7 @@ const app=document.getElementById('app');
 function go(v){ S.view=v; S.sheet=null; if(['home','history','insights'].includes(v.name)){ const h='#'+v.name; if(location.hash!==h){ try{ history.replaceState(null,'',h); }catch(e){ location.hash=h; } } } render(); window.scrollTo(0,0); }
 function render(keep){
   const y=window.scrollY, v=S.view;
-  const html={ home:vHome, session:vSession, drill:vDrill, result:vResult, history:vHistory, insights:vInsights }[v.name]();
+  const html={ home:vHome, session:vSession, drill:vDrill, result:vResult, history:vHistory, insights:vInsights, shared:vShared }[v.name]();
   app.innerHTML=html+(S.sheet?vSheet():'')+(S.toast?`<div class="toast" role="status">${esc(S.toast)}</div>`:'');
   if(keep){ window.scrollTo(0,y); requestAnimationFrame(()=>window.scrollTo(0,y)); }
 }
@@ -604,7 +682,7 @@ const catSub=c=>{ const k=c.cat.kind||'pat'; if(k==='errors') return c.cat.parts
 function vHome(){
   S.sessions=S.sessions.filter(s=>hasData(s)||Date.now()-s.created<5000||S.view.id===s.id);
   const open=S.sessions.filter(s=>hasData(s)&&!s.finished).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,3);
-  let h=`<header class="top home"><div><h1>PAT Tracker</h1><p class="sub">Score a test, see where the points went.</p></div><button class="sync" data-act="backup">Backup</button></header><main>`;
+  let h=`<header class="top home"><div><h1>PAT Tracker</h1><p class="sub">Score a test, see where the points went.</p></div><div class="hbtns">${C()?`<button class="sync" data-act="account">${me()?esc(me().nick||'Account'):'Sign in'}</button>`:''}<button class="sync" data-act="backup">Backup</button></div></header><main>`;
   if(open.length){ h+=`<section><h2>Pick up where you stopped</h2>${open.map(s=>{ const t=testById(s.test), c=calcOf(s); return `<button class="row" data-act="open" data-id="${s.id}"><span class="row-main"><b>${t.name}</b><small>${fmtDate(s.date)} · ${c.doneCount} of ${t.cats.length} drills scored</small></span><span class="num">${isB(t)?`${c.errors}<small class="unit">err</small> ${c.total}`:c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section>`; }
   h+=`<section><h2>Start a test</h2>`;
   TESTS.forEach(t=>{
@@ -716,7 +794,7 @@ function vResult(){
   }
   const notes=t.cats.filter(k=>s.notes[k.id]);
   if(notes.length) h+=`<section class="card"><h3>Your notes</h3>${notes.map(k=>`<p class="noteline"><b>${k.name}</b> ${esc(s.notes[k.id])}</p>`).join('')}</section>`;
-  h+=`<div class="actions"><button class="btn primary" data-act="edit">Edit scores</button><button class="btn" data-act="copy">Copy summary</button><button class="btn ghost danger" data-act="askdel">Delete this test</button></div></main>`;
+  h+=`<div class="actions"><button class="btn primary" data-act="edit">Edit scores</button>${C()&&s?`<button class="btn" data-act="share">${(s.sharedWith||[]).length?`Shared with ${(s.sharedWith||[]).map(u=>esc((s.sharedNames||{})[u]||'someone')).join(', ')}`:'Share this test'}</button>`:''}<button class="btn" data-act="copy">Copy summary</button><button class="btn ghost danger" data-act="askdel">Delete this test</button></div></main>`;
   return h;
 }
 
@@ -737,12 +815,42 @@ function vResultBasis(s,t,c){
   h+=`<section class="card"><button class="row plain" data-act="drill" data-ci="${gi}"><span class="row-main"><b>Ghost 9-Ball</b><small>${racks.filter(v=>v===15).length} break and runs · ${racks.filter(v=>v===10).length} runs after ball in hand</small></span><span class="num">${g.entered?g.pts:'&middot;'}</span><span class="chev">&#8250;</span></button><div class="racks">${racks.map((v,i)=>`<span class="rk ${v===15?'r15':v===10?'r10':typeof v==='number'?'rx':'re'}"><small>${i+1}</small>${typeof v==='number'?v:'&middot;'}</span>`).join('')}</div></section>`;
   const notes=t.cats.filter(k=>s.notes[k.id]);
   if(notes.length) h+=`<section class="card"><h3>Your notes</h3>${notes.map(k=>`<p class="noteline"><b>${k.name}</b> ${esc(s.notes[k.id])}</p>`).join('')}</section>`;
-  h+=`<div class="actions"><button class="btn primary" data-act="edit">Edit scores</button><button class="btn" data-act="copy">Copy summary</button><button class="btn ghost danger" data-act="askdel">Delete this test</button></div></main>`;
+  h+=`<div class="actions"><button class="btn primary" data-act="edit">Edit scores</button>${C()&&s?`<button class="btn" data-act="share">${(s.sharedWith||[]).length?`Shared with ${(s.sharedWith||[]).map(u=>esc((s.sharedNames||{})[u]||'someone')).join(', ')}`:'Share this test'}</button>`:''}<button class="btn" data-act="copy">Copy summary</button><button class="btn ghost danger" data-act="askdel">Delete this test</button></div></main>`;
   return h;
 }
+
+function loadShared(){ const c=C(); if(!c||!c.user) return; S.sharedState='loading'; c.listShared().then(list=>{ S.shared=list; S.sharedState='ok'; if(S.view.name==='history'||S.view.name==='shared') render(true); }).catch(()=>{ S.sharedState='error'; if(S.view.name==='history') render(true); }); }
+function vSharedList(){
+  if(!S.shared&&S.sharedState!=='error'){ if(S.sharedState!=='loading') loadShared(); return `<p class="empty">Loading tests shared with you...</p>`; }
+  if(S.sharedState==='error'&&!S.shared) return `<p class="empty">Could not load shared tests. Check your connection and open this tab again.</p>`;
+  const list=(S.shared||[]).filter(x=>testById(x.test)).sort((a,b)=>a.date<b.date?1:-1);
+  if(!list.length) return `<p class="empty">Nobody has shared a test with you yet. Others can share with you using your email or your nickname, ${esc(me().nick||'')}.</p>`;
+  return `<section>${list.map(x=>{ const t=testById(x.test), c=sessionCalc(t,x.scores); return `<button class="row" data-act="openshared" data-key="${esc(x.key)}"><span class="tag">${t.name}</span><span class="row-main"><b>${esc(x.ownerNick)}</b><small>${fmtDate(x.date)}${c.complete?'':` · ${c.doneCount} of ${t.cats.length} drills`}</small></span><span class="num">${isB(t)?`${c.errors}<small class="unit">err</small> ${c.total}`:c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section><button class="btn ghost" data-act="reshared">Refresh</button>`;
+}
+function vShared(){
+  const x=(S.shared||[]).find(y=>y.key===S.view.key); if(!x) return topBar('Shared test',true)+`<main><p class="empty">This test is no longer shared with you.</p></main>`;
+  const t=testById(x.test), c=sessionCalc(t,x.scores), tt=t.cats.filter(k=>k.timed).reduce((a,k)=>a+((x.times||{})[k.id]||0),0);
+  let h=topBar(`${t.name} · ${x.ownerNick}`,true)+'<main>';
+  h+=`<section class="card hero"><p class="eyebrow">${esc(x.ownerNick)} · ${fmtDate(x.date)}${c.complete?'':` · ${c.doneCount} of ${t.cats.length} drills`}</p>`;
+  h+= isB(t) ? `<div class="duo"><div><span class="big">${c.errors}</span><span class="of">errors</span></div><div><span class="big">${c.total}</span><span class="of">ghost, of 150</span></div>${tt?`<div><span class="big sm">${fmtT(tt)}</span><span class="of">time, drills 1 to 6</span></div>`:''}</div>`
+     : `<div class="hero-num"><span class="big">${c.total}</span><span class="of">${t.mode==='sum'?`of ${t.targetTotal} target`:'average percent'}</span></div>`;
+  h+=`</section>`;
+  c.cats.forEach((k,i)=>{
+    const tm=(x.times||{})[k.cat.id];
+    h+=`<section class="card shared-cat"><div class="entry-head"><h3>${i+1}. ${k.cat.name}</h3><span class="num big sm ${k.complete?bandK(t,k.cat,k.pts):'dim'}">${k.entered?k.pts:'&middot;'}</span></div><p class="fine">${catSub(k)}${tm?` · time ${fmtT(tm)}`:''}</p>`;
+    k.cat.parts.forEach(p=>{
+      h+=`${k.cat.parts.length>1?`<p class="flabel">${p.label||''} ${p.title}</p>`:''}<div class="vals">${p.fields.map((f,fi)=>{ const v=x.scores[k.cat.id+'.'+p.id+'.'+fi]; return `<span class="vv"><small>${esc(f.label.replace('Errors, ',''))}</small><b class="num">${typeof v==='number'?v:'&middot;'}</b></span>`; }).join('')}</div>`;
+    });
+    if(x.notes&&x.notes[k.cat.id]) h+=`<p class="noteline"><b>Notes</b> ${esc(x.notes[k.cat.id])}</p>`;
+    h+=`</section>`;
+  });
+  return h+'</main>';
+}
 function vHistory(){
-  const all=sorted().reverse();
+  const all=sorted().reverse(), tab=me()?(S.view.tab||'mine'):'mine';
   let h=topBar('History')+'<main>';
+  if(me()) h+=`<div class="seg"><button class="${tab==='mine'?'on':''}" data-act="htab" data-tab="mine">My tests</button><button class="${tab==='shared'?'on':''}" data-act="htab" data-tab="shared">Shared with me</button></div>`;
+  if(tab==='shared') return h+vSharedList()+'</main>'+nav('history');
   if(!all.length) h+=`<p class="empty">No tests yet. Score your first one from the Tests tab and it shows up here.</p>`;
   else h+=`<section>${all.map(s=>{ const t=testById(s.test), c=calcOf(s); return `<button class="row" data-act="result" data-id="${s.id}"><span class="tag">${t.name}</span><span class="row-main"><b>${fmtDate(s.date)}</b><small>${c.complete?'Full test':`${c.doneCount} of ${t.cats.length} drills`}${s.finished?'':' · in progress'}</small></span><span class="num">${isB(t)?`${c.errors}<small class="unit">err</small> ${c.total}`:c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section>`;
   return h+'</main>'+nav('history');
@@ -781,6 +889,20 @@ function insightsBasis(t,done,any){
   return h;
 }
 function vSheet(){ const sh=S.sheet;
+  if(sh.kind==='account'){
+    const u=me(), mode=u?'profile':(sh.mode||'signin'), busy=sh.busy?' disabled':'', err=sh.err?`<p class="err" role="alert">${esc(sh.err)}</p>`:'', ok=sh.ok?`<p class="okmsg">${esc(sh.ok)}</p>`:'';
+    let b='';
+    if(mode==='profile'){ const n=S.sessions.filter(hasData).length;
+      b=`<h3>${esc(u.nick||'Your account')}</h3><p class="fine">${esc(u.email)}</p><p>Your ${n} test${n===1?' is':'s are'} saved to your account. Others can share tests with you using your email or your nickname.</p><p class="fine" id="netstate">${netText()}</p><div class="actions"><button class="btn" data-act="signout"${busy}>Sign out</button><button class="btn ghost" data-act="cancel">Close</button></div>`; }
+    else if(mode==='signup') b=`<h3>Create account</h3><form class="form" data-form="signup"><label for="f-nick">Nickname</label><input id="f-nick" value="${esc((sh.vals||{})["f-nick"]||"")}" autocomplete="username" autocapitalize="off" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_.\\-]{3,20}"><label for="f-email">Email</label><input id="f-email" value="${esc((sh.vals||{})["f-email"]||"")}" type="email" autocomplete="email" required><label for="f-pass">Password</label><input id="f-pass" value="${esc((sh.vals||{})["f-pass"]||"")}" type="password" autocomplete="new-password" required minlength="6">${err}<button class="btn primary"${busy}>Create account</button></form><p class="fine">Already have an account? <button class="link" data-act="amode" data-mode="signin">Sign in</button></p>`;
+    else if(mode==='reset') b=`<h3>Reset password</h3><form class="form" data-form="reset"><label for="f-email">Email</label><input id="f-email" value="${esc((sh.vals||{})["f-email"]||"")}" type="email" autocomplete="email" required>${err}${ok}<button class="btn primary"${busy}>Send reset email</button></form><p class="fine"><button class="link" data-act="amode" data-mode="signin">Back to sign in</button></p>`;
+    else b=`<h3>Sign in</h3><form class="form" data-form="signin"><label for="f-email">Email</label><input id="f-email" value="${esc((sh.vals||{})["f-email"]||"")}" type="email" autocomplete="email" required><label for="f-pass">Password</label><input id="f-pass" value="${esc((sh.vals||{})["f-pass"]||"")}" type="password" autocomplete="current-password" required>${err}<button class="btn primary"${busy}>Sign in</button></form><p class="fine">New here? <button class="link" data-act="amode" data-mode="signup">Create an account</button> · <button class="link" data-act="amode" data-mode="reset">Forgot password</button></p><p class="fine">Tests already on this phone move into your account when you sign in.</p>`;
+    return `<div class="scrim" data-act="cancel"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Account">${b}</div>`;
+  }
+  if(sh.kind==='share'){
+    const s=sess(S.view.id), names=s.sharedWith||[], err=sh.err?`<p class="err" role="alert">${esc(sh.err)}</p>`:'';
+    return `<div class="scrim" data-act="cancel"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Share"><h3>Share this test</h3><p class="fine">They see this test in full, with every drill, time and note. They do not see your other tests, your best or your history.</p><form class="form" data-form="share"><label for="f-share">Email or nickname</label><div class="inrow"><input id="f-share" value="${esc((sh.vals||{})["f-share"]||"")}" autocapitalize="off" autocomplete="off" required><button class="btn primary"${sh.busy?' disabled':''}>Share</button></div>${err}</form>${names.length?`<ul class="shared-list">${names.map(u=>`<li><span>${esc((s.sharedNames||{})[u]||'someone')}</span><button class="link danger" data-act="unshare" data-uid="${esc(u)}">Stop sharing</button></li>`).join('')}</ul>`:''}<div class="actions"><button class="btn ghost" data-act="cancel">Done</button></div></div>`;
+  }
   if(sh.kind==='backup'){ const n=S.sessions.filter(hasData).length;
     return `<div class="scrim" data-act="cancel"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Backup"><h3>Backup and restore</h3><p>Your scores are stored on this phone. Save a backup file now and then (to Files, iCloud Drive or mail it to yourself), and restore it here on a new phone.</p><p class="fine">${n} test${n===1?'':'s'} on this phone. Last backup: ${S.prefs.lastBackup?fmtDate(S.prefs.lastBackup):'never'}.</p><div class="actions"><button class="btn primary" data-act="bk-save"${n?'':' disabled'}>Save backup file</button><label class="btn file-btn" for="bk-file">Restore from a backup file</label><input type="file" id="bk-file" accept=".json,application/json" hidden><button class="btn ghost" data-act="cancel">Close</button></div></div>`; }
   return `<div class="scrim" data-act="cancel"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(sh.title)}"><h3>${esc(sh.title)}</h3><p>${esc(sh.text)}</p><div class="actions"><button class="btn danger-solid" data-act="${sh.act}">${esc(sh.ok)}</button><button class="btn" data-act="cancel">Keep it</button></div></div>`; }
@@ -812,11 +934,20 @@ document.addEventListener('click',e=>{
     if(ci>=t.cats.length){ s.finished=true; touch(s); go({ name:'result', id:s.id }); } else go({ name:'drill', id:v.id, ci, pi, from:v.from }); }
   else if(a==='finish'){ s.finished=true; touch(s); go({ name:'result', id:s.id }); }
   else if(a==='edit') go({ name:'session', id:v.id });
+  else if(a==='back'&&v.name==='shared') go({ name:'history', tab:'shared' });
   else if(a==='back'){ if(v.name==='drill') go(v.from==='result'?{ name:'result', id:v.id }:{ name:'session', id:v.id }); else if(v.name==='result') go({ name:'history' }); else go({ name:'home' }); }
   else if(a==='instest'){ v.test=b.dataset.test; render(true); }
   else if(a==='askdel'){ S.sheet={ title:'Delete this test?', text:'Its scores and notes are removed from your history. This cannot be undone.', ok:'Delete', act:'del' }; render(true); }
   else if(a==='cancel'){ S.sheet=null; render(true); }
   else if(a==='backup'){ S.sheet={ kind:'backup' }; render(true); }
+  else if(a==='account'){ S.sheet={ kind:'account', mode:me()?'profile':'signin' }; render(true); }
+  else if(a==='amode'){ S.sheet={ kind:'account', mode:b.dataset.mode }; render(true); }
+  else if(a==='signout'){ S.sheet.busy=true; render(true); flush().finally(()=>C().signOut().then(()=>{ S.sessions=[]; S.tomb=[]; S.prefs.dirty=[]; S.prefs.owner=null; S.shared=null; persist(); S.sheet=null; go({ name:'home' }); toast('Signed out'); })); }
+  else if(a==='share'){ if(!me()){ S.sheet={ kind:'account', mode:'signin' }; } else S.sheet={ kind:'share' }; render(true); }
+  else if(a==='unshare'){ const u=b.dataset.uid; s.sharedWith=(s.sharedWith||[]).filter(x=>x!==u); if(s.sharedNames) delete s.sharedNames[u]; touch(s); flush(); render(true); }
+  else if(a==='htab'){ v.tab=b.dataset.tab; if(v.tab==='shared') S.shared=null; render(true); }
+  else if(a==='reshared'){ S.shared=null; S.sharedState=null; render(true); }
+  else if(a==='openshared') go({ name:'shared', key:b.dataset.key });
   else if(a==='bk-save') saveBackup();
   else if(a==='del'){ removeSession(v.id); go({ name:'history' }); toast('Test deleted'); }
   else if(a==='copy'){ const txt=summaryText(s); try{ navigator.clipboard.writeText(txt).then(()=>toast('Summary copied'),()=>toast('Copy was blocked by the browser')); }catch(err){ toast('Copy was blocked by the browser'); } }
@@ -824,6 +955,26 @@ document.addEventListener('click',e=>{
 document.addEventListener('change',e=>{ if(e.target.id==='bk-file'&&e.target.files&&e.target.files[0]){ const f=e.target.files[0]; f.text().then(t=>{ const r=mergeBackup(t); S.sheet=null; if(r.error) toast(r.error); else { toast(r.added||r.updated?`Restored ${r.added} new, ${r.updated} updated`:'Nothing new in that backup'); } render(true); }); return; }
   if(e.target.dataset.chg==='date'&&e.target.value){ const s=sess(S.view.id); s.date=e.target.value; touch(s); }
   if(e.target.dataset.chg==='time'){ const s=sess(S.view.id), cid=testById(s.test).cats[S.view.ci].id, v=e.target.value.trim(); s.times=s.times||{}; if(!v) delete s.times[cid]; else { const sec=parseT(v); if(sec==null){ toast('Type the time as minutes:seconds, like 8:43'); return; } s.times[cid]=sec; } touch(s); render(true); } });
+
+document.addEventListener('submit',async e=>{
+  const f=e.target.closest('[data-form]'); if(!f) return; e.preventDefault();
+  const kind=f.dataset.form, c=C(); if(!c) return;
+  const sh=S.sheet, vals={}; f.querySelectorAll('input').forEach(i=>{ vals[i.id]=i.value; }); const val=id=>vals[id]||'';
+  sh.vals=vals; sh.err=''; sh.ok=''; sh.busy=true; render(true);
+  try{
+    if(kind==='signin'){ await c.signIn(val('f-email'),val('f-pass')); S.sheet=null; toast('Signed in'); }
+    else if(kind==='signup'){ await c.signUp(val('f-nick'),val('f-email'),val('f-pass')); S.sheet=null; toast('Account created'); }
+    else if(kind==='reset'){ await c.reset(val('f-email')); sh.ok='If that email has an account, a reset link is on its way.'; }
+    else if(kind==='share'){
+      const q=val('f-share'), s=sess(S.view.id), who=await c.lookup(q);
+      if(!who) sh.err='No account with that email or nickname.';
+      else if(who.uid===me().uid) sh.err='That is you.';
+      else if((s.sharedWith||[]).includes(who.uid)) sh.err=`Already shared with ${who.nick}.`;
+      else { s.sharedWith=[...(s.sharedWith||[]),who.uid]; s.sharedNames=Object.assign({},s.sharedNames,{ [who.uid]:who.nick }); touch(s); await flush(); sh.vals={}; toast(`Shared with ${who.nick}`); }
+    }
+  }catch(err){ sh.err=kind==='share'?'Could not share. Check your connection and try again.':authMsg(err); }
+  if(S.sheet===sh){ sh.busy=false; } render(true);
+});
 let noteT; document.addEventListener('input',e=>{ if(e.target.dataset.inp==='note'){ const s=sess(S.view.id), t=testById(s.test), cat=t.cats[S.view.ci], val=e.target.value; clearTimeout(noteT); noteT=setTimeout(()=>{ if(val.trim()) s.notes[cat.id]=val; else delete s.notes[cat.id]; touch(s); },500); } });
 window.addEventListener('hashchange',()=>{ const n=location.hash.slice(1); if(['home','history','insights'].includes(n)&&S.view.name!==n&&['home','history','insights'].includes(S.view.name)) go({ name:n }); });
 
@@ -833,5 +984,6 @@ render();
 if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
+<script type="module" src="cloud.js"></script>
 </body>
 </html>

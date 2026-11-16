@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+
+    // Your own profile: only you.
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Nickname and email lookups: anyone signed in can check ONE exact name or email,
+    // nobody can list them. Each person can only claim names for their own account.
+    match /nicks/{nick} {
+      allow get: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && nick == request.resource.data.nick.lower()
+        && nick.matches('^[a-z0-9_.-]{3,20}$');
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+    match /emails/{email} {
+      allow get: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && email == request.auth.token.email.lower();
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // Test results: the owner can do everything; people it is shared with can only read it.
+    match /sessions/{sid} {
+      allow read: if signedIn()
+        && (resource.data.owner == request.auth.uid || request.auth.uid in resource.data.sharedWith);
+      allow create: if signedIn()
+        && request.resource.data.owner == request.auth.uid
+        && sid.matches(request.auth.uid + '_.+')
+        && request.resource.data.sharedWith is list
+        && request.resource.data.sharedWith.size() <= 50;
+      allow update: if signedIn()
+        && resource.data.owner == request.auth.uid
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.sharedWith is list
+        && request.resource.data.sharedWith.size() <= 50;
+      allow delete: if signedIn() && resource.data.owner == request.auth.uid;
+    }
+  }
+}

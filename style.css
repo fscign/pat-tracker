@@ -176,3 +176,21 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 .sum-row>div:first-child{display:flex;align-items:baseline;gap:8px}
 .photo{aspect-ratio:3/4;object-fit:cover}
 .cbtn{font-family:var(--body)}
+.hbtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.form{display:flex;flex-direction:column;gap:6px}
+.form label{font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:6px}
+.form input{font:inherit;font-size:17px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%}
+.form .btn{margin-top:10px}
+.inrow{display:flex;gap:8px}
+.inrow .btn{margin-top:0}
+.err{color:var(--bad);font-size:14px;font-weight:600}
+.okmsg{color:var(--good);font-size:14px;font-weight:600}
+.shared-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.shared-list li{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:6px}
+.link.danger{color:var(--bad)}
+.sheet{max-height:92vh;overflow:auto}
+.vals{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px}
+.vv{display:flex;flex-direction:column;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px 4px}
+.vv small{font-size:11px;color:var(--muted);text-align:center}
+.vv b{font-size:20px}
+.shared-cat .entry-head{align-items:center}
