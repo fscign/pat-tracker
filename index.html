@@ -189,6 +189,12 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 .rk.r10{border-color:var(--good);color:var(--good)}
 .rk.re{color:var(--muted)}
 .row.plain{border:0;padding:0;min-height:0;background:none}
+.entry-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.entry-head .sum-side{font-size:13.5px}
+.sum-row{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.sum-row>div:first-child{display:flex;align-items:baseline;gap:8px}
+.photo{aspect-ratio:3/4;object-fit:cover}
+.cbtn{font-family:var(--body)}
 </style>
 </head>
 <body>
@@ -403,13 +409,13 @@ const TESTS = [
     { id:'p', label:'Position', title:'Workout: positions reached', diagram:null, missing:'The eight workout shots (PAT 3, page 48) were not in the scanned file. Set them up from the book.', fields:Array.from({length:8},(_,i)=>({label:'Shot '+(i+1), max:7, min:0})), how:['Enter how many times you also reached position. A position point only counts when the ball was potted.','The book puts the pass mark at 80 percent: 44.8 of 56 for each line.'] } ] },
 ]},
 { id:'basis', name:'Basis-Check', short:'Basis', sub:'Six drills scored by errors, then 10 racks against the ghost', mode:'basis', cats:[
-  { id:'b1', name:'Warm Up Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'Warm Up Drill', photo:'basis-1.jpg', fields:[{ label:'Errors, both rounds', counter:1 }], how:['Spread all 15 balls at least one diamond off every cushion.','Pocket every ball without the cue ball touching a rail. Object balls may touch each other and the rails.','A miss or the cue ball touching a rail is an error. Take ball in hand after every error.','Play it twice and enter the errors from both rounds together.'] }] },
+  { id:'b1', name:'Warm Up Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'Warm Up Drill', photo:'basis-1.jpg', fields:[{ label:'Errors, both rounds', counter:1 }], how:['Spread all 15 balls at least one diamond off every cushion.','Pocket every ball without the cue ball touching a rail. The cue ball may touch object balls, and object balls may touch the rails.','A miss or the cue ball touching a rail is an error. Take ball in hand after every error.','Play it twice and enter the errors from both rounds together.'] }] },
   { id:'b2', name:'Technique Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'Technique Drill', photo:'basis-2.jpg', fields:[{ label:'Errors', counter:1 }], how:['Five object balls on the third diamond on each side.','Ball in hand two diamonds away. Pot the ball and follow the cue ball into the same pocket.','If both balls do not drop, or the cue ball does not follow in, it is an error. Put the ball back and play it again.'] }] },
-  { id:'b3', name:'S Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'S Drill', photo:'basis-3.jpg', fields:[{ label:'Errors, round 1', counter:1 },{ label:'Errors, round 2', counter:1 }], how:['Five balls on the second diamond, about a quarter diamond off the rail.','Pot them from the outside in. For every position the cue ball goes exactly two rails: short rail, then long rail.','A miss or touching another ball is an error. Take ball in hand after an error.','The score sheet has two boxes for this drill, one per round.'] }] },
+  { id:'b3', name:'S Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'S Drill', photo:'basis-3.jpg', fields:[{ label:'Errors, round 1', counter:1 },{ label:'Errors, round 2', counter:1 }], how:['Five balls on the second diamond on each side of the table, about a quarter diamond off the rail.','Pot them from the outside in. For every position the cue ball goes exactly two rails: short rail, then long rail.','A miss or touching another ball is an error. Take ball in hand after an error.','Round 1 is one side, round 2 the other side.'] }] },
   { id:'b4', name:'Quadrant Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'Quadrant Drill', photo:'basis-4.jpg', fields:[{ label:'Errors, round 1', counter:1 },{ label:'Errors, round 2', counter:1 }], how:['All 15 balls at random around the second diamond, about half a ball off the rail.','Pot them in rotation, 1 to 15, without touching another ball.','The cue ball has to stay in that quadrant: it may never pass the second diamond.','A miss or touching another object ball is an error. Take ball in hand after an error. Play it twice.'] }] },
   { id:'b5', name:'Snooker Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'Snooker Drill', photo:'basis-5.jpg', fields:[{ label:'Errors', counter:1 }], how:['Line the balls up as in the photo: even numbers on one side, odd on the other, the 15 on the spot.','Pot 1 to 14 in rotation, and pot the 15 between every ball, re-spotting it each time.','Balls on the left go in the left pocket, balls on the right in the right pocket. The cue ball may not cross the line of balls.','A miss, touching a ball or crossing the line is an error. Take ball in hand after an error.'] }] },
   { id:'b6', name:'10 Ball Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'10 Ball Drill', photo:'basis-6.jpg', fields:[{ label:'Errors, round 1', counter:1 },{ label:'Errors, round 2', counter:1 }], how:['Even balls on one side, odd balls on the other, in random order.','Pot them from 1 to 10.','A miss or touching a ball is an error. Take ball in hand after an error.','The score sheet has two boxes for this drill, one per round.'] }] },
-  { id:'b7', name:'Ghost 9-Ball', kind:'ghost', parts:[{ id:'a', title:'Ghost 9-Ball, 10 racks', diagram:null, fields:Array.from({length:10},(_,i)=>({ label:'Rack '+(i+1), values:[0,1,2,3,4,5,6,7,8,9,10,15] })), how:['Ten racks of 9-ball. The 9 on the spot, kitchen rule.','Break and run out: 15 points.','Ball in hand after the break and run out: 10 points (the 9 counts 2).','A dry break or a foul on the break does not matter, you take ball in hand.','After a miss: 9 minus the balls left on the table. Three left means 9 minus 3, so 6.'] }] },
+  { id:'b7', name:'Ghost 9-Ball', kind:'ghost', parts:[{ id:'a', title:'Ghost 9-Ball, 10 racks', diagram:null, fields:Array.from({length:10},(_,i)=>({ label:'Rack '+(i+1), values:[0,1,2,3,4,5,6,7,8,9,10,15] })), how:['Ten racks of 9-ball. The 9 on the spot, kitchen rule.','Break and run out: 15 points.','Ball in hand after the break and run out: 10 points, because the 9-ball counts as 2 points.','A dry break or a foul on the break does not matter, you take ball in hand.','After a miss: 9 minus the balls left on the table. Three left means 9 minus 3, so 6.'] }] },
 ]},
 ];
 
@@ -467,7 +473,6 @@ function drawDiagram(id, mirror){
   [[R-6,R-6,20],[TW-R+6,R-6,20],[R-6,TH-R+6,20],[TW-R+6,TH-R+6,20],[R-13,R+4*U,18],[TW-R+13,R+4*U,18]].forEach(c=>{ o+=`<circle cx="${c[0]}" cy="${c[1]}" r="${c[2]}" fill="#05090c"/>`; });
   for(let i=1;i<8;i++){ if(i===4) continue; o+=`<circle cx="15" cy="${R+i*U}" r="3" fill="#e8eef3"/><circle cx="${TW-15}" cy="${R+i*U}" r="3" fill="#e8eef3"/>`; }
   for(let j=1;j<4;j++) o+=`<circle cx="${R+j*U}" cy="15" r="3" fill="#e8eef3"/><circle cx="${R+j*U}" cy="${TH-15}" r="3" fill="#e8eef3"/>`;
-  o+=`<text x="${R+1.5*U}" y="19" class="dg-rail">FOOT</text><text x="${R+1.5*U}" y="${TH-11}" class="dg-rail">HEAD</text>`;
   o+=`<polygon points="${pt([2,2])} ${pt([1.25,1.57])} ${pt([1.25,2.43])}" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1.5" stroke-linejoin="round"/>`;
   [[2,2],[4,2],[6,2]].forEach(p=>{ const q=T(p); o+=`<circle cx="${q[0]}" cy="${q[1]}" r="2.6" fill="#fff" fill-opacity=".55"/>`; });
   (spec.zones||[]).forEach(z=>{
@@ -580,7 +585,7 @@ function render(keep){
   const y=window.scrollY, v=S.view;
   const html={ home:vHome, session:vSession, drill:vDrill, result:vResult, history:vHistory, insights:vInsights }[v.name]();
   app.innerHTML=html+(S.sheet?vSheet():'')+(S.toast?`<div class="toast" role="status">${esc(S.toast)}</div>`:'');
-  if(keep) window.scrollTo(0,y);
+  if(keep){ window.scrollTo(0,y); requestAnimationFrame(()=>window.scrollTo(0,y)); }
 }
 function toast(t){ S.toast=t; render(true); clearTimeout(toast.t); toast.t=setTimeout(()=>{ S.toast=''; const el=document.querySelector('.toast'); if(el) el.remove(); },2200); }
 const nav=cur=>`<nav class="tabs" aria-label="Sections">${[['home','Tests'],['history','History'],['insights','Insights']].map(t=>`<button data-act="tab" data-v="${t[0]}" class="${cur===t[0]?'on':''}"${cur===t[0]?' aria-current="page"':''}>${t[1]}</button>`).join('')}</nav>`;
@@ -658,13 +663,12 @@ function vDrill(){
   let h=topBar(`${ci+1}. ${cat.name}`,true,`<span class="step">${ci+1}/${t.cats.length}</span>`)+'<main>';
   if(cat.parts.length>1) h+=`<div class="seg" role="tablist">${cat.parts.map((p,i)=>{ const filled=p.fields.every((f,k)=>typeof s.scores[cat.id+'.'+p.id+'.'+k]==='number'); return `<button role="tab" aria-selected="${i===pi}" class="${i===pi?'on':''}${filled?' filled':''}" data-act="part" data-pi="${i}">${p.label}</button>`; }).join('')}</div>`;
   h+=`<h2 class="part-title">${part.title}</h2>`;
-  if(part.photo) h+=`<figure class="fig"><img class="photo" src="${part.photo}" alt="Set-up photo for ${esc(part.title)}" loading="lazy"></figure>`;
+  if(part.photo) h+=`<figure class="fig"><img class="photo" src="${part.photo}" width="720" height="960" alt="Set-up photo for ${esc(part.title)}" decoding="sync"></figure>`;
   else if(part.diagram) h+=`<figure class="fig">${drawDiagram(part.diagram,mir)}<figcaption><button class="link" data-act="mirror">${mir?'Show original side':'Mirror layout'}</button></figcaption></figure>`;
   else if(part.missing) h+=`<p class="missing">${part.missing}</p>`;
   h+=`<section class="card how">${part.tip?`<div class="tiprow">${tipSvg(part.tip,mir)}<span>Suggested tip position from the book</span></div>`:''}<ul>${part.how.map(x=>`<li>${x}</li>`).join('')}</ul></section>`;
   if(cat.timed){ const on=s.timer&&s.timer.cat===cat.id, tm=tOf(s,cat.id);
     h+=`<section class="card timer"><div class="t-row"><div><span class="flabel">Time</span><span class="big sm num" id="tval" data-cat="${cat.id}">${fmtT(tm)}</span></div><div class="t-btns">${on?`<button class="btn danger-solid" data-act="t-stop">Stop</button>`:`<button class="btn primary" data-act="t-start">${tm?'Resume':'Start'}</button>`}</div></div><div class="t-row"><label class="fine" for="tman">Or type it (min:sec)</label><input id="tman" class="tman" data-chg="time" inputmode="decimal" placeholder="8:43" value="${tm&&!on?fmtT(tm):''}"${on?' disabled':''}>${tm&&!on?'<button class="link" data-act="t-reset">Reset</button>':''}</div></section>`; }
-  h+=`<section class="card entry"><h3>${cat.kind==='errors'?'Your errors':'Your score'}</h3>${part.fields.map((f,i)=>{ const key=cat.id+'.'+part.id+'.'+i; return `<div class="field"><span class="flabel">${f.label}</span>${chips(key,f,s.scores[key])}</div>`; }).join('')}</section>`;
   // live summary
   const prev=sorted(t.id).filter(x=>x.id!==s.id).map(x=>catCalc(cat,x.scores)).filter(x=>x.complete).map(x=>x.pts);
   const lower=kind==='errors', best=prev.length?(lower?Math.min(...prev):Math.max(...prev)):null, last=prev.length?prev[prev.length-1]:null;
@@ -677,7 +681,12 @@ function vDrill(){
     else if(kind==='ghost'){ const v=part.fields.map((f,i)=>s.scores[cat.id+'.a.'+i]).filter(x=>typeof x==='number'); avgTxt=`average ${c.avg.toFixed(1)} per rack, ${v.filter(x=>x===15).length} break and runs`; scale=`<div class="meter"><div class="fill ${c.complete?bandK(t,cat,c.pts):''}" style="width:${Math.min(100,c.pts/150*100)}%"></div></div><div class="meter-lab"><span>0</span><span>150</span></div>`; }
     else avgTxt=`${c.sum} of ${c.complete?cat.cap:c.entered*7} so far`;
   }
-  h+=`<section class="card summary"><div class="sum-top"><div><span class="big ${c.complete?bandK(t,cat,c.pts):''}">${c.entered?c.pts:'&middot;'}</span><span class="of">${kind==='pat'||kind==='ghost'?'points':kind==='errors'?(c.pts===1?'error':'errors'):'percent'}${c.entered&&!c.complete?' so far':''}</span></div><div class="sum-side">${best!=null?`<span>${lower?'Fewest':'Best'} <b>${best}</b></span><span>Last <b>${last}</b></span>`:'<span>First time on this drill</span>'}${c.complete&&best!=null&&(lower?c.pts<best:c.pts>best)?'<span class="pill good">New best</span>':''}</div></div>${avgTxt?`<p class="fine">${c.entered} of ${c.n} entered, ${avgTxt}.</p>`:c.entered?'':`<p class="fine">${kind==='errors'?'Use + and minus to count errors as you play.':'Tap a number for each line above. Tap it again to clear it.'}</p>`}${scale}</section>`;
+  const hist=best!=null?`<span>${lower?'Fewest':'Best'} <b>${best}</b></span><span>Last <b>${last}</b></span>`:'<span>First time on this drill</span>';
+  const isNew=c.complete&&best!=null&&(lower?c.pts<best:c.pts>best)?'<span class="pill good">New best</span>':'';
+  const fieldsHtml=part.fields.map((f,i)=>{ const key=cat.id+'.'+part.id+'.'+i; return `<div class="field"><span class="flabel">${f.label}</span>${chips(key,f,s.scores[key])}</div>`; }).join('');
+  const showTotal=!(kind==='errors'&&c.n===1);
+  const hint=`<p class="fine">${kind==='errors'?'Use + and − to count your errors as you play.':'Tap a number for each line. Tap it again to clear it.'}</p>`;
+  h+=`<section class="card entry"><div class="entry-head"><h3>${kind==='errors'?'Your errors':'Your score'}</h3><div class="sum-side">${hist}${isNew}</div></div>${hint}${fieldsHtml}${showTotal?`<div class="sum-row"><div><span class="big ${c.complete?bandK(t,cat,c.pts):''}">${c.entered?c.pts:'&middot;'}</span><span class="of">${kind==='pat'||kind==='ghost'?'points':kind==='errors'?(c.pts===1?'error in total':'errors in total'):'percent'}${c.entered&&!c.complete?' so far':''}</span></div>${avgTxt&&kind!=='errors'?`<p class="fine">${c.entered} of ${c.n} entered, ${avgTxt}.</p>`:''}${scale}</div>`:''}</section>`;
   h+=`<section class="card"><label class="flabel" for="note">Notes for this drill</label><textarea id="note" data-inp="note" rows="2" placeholder="${kind==='errors'?'What caused the errors?':'What cost you points?'}">${esc(s.notes[cat.id]||'')}</textarea></section>`;
   const lastPart=pi===cat.parts.length-1, lastCat=ci===t.cats.length-1;
   h+=`</main><footer class="pager"><button class="btn ghost" data-act="prev"${ci===0&&pi===0?' disabled':''}>Back</button><button class="btn ghost" data-act="list">All drills</button><button class="btn primary" data-act="next">${lastPart&&lastCat?'Result':'Next'}</button></footer>`;

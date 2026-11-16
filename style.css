@@ -170,3 +170,9 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 .rk.r10{border-color:var(--good);color:var(--good)}
 .rk.re{color:var(--muted)}
 .row.plain{border:0;padding:0;min-height:0;background:none}
+.entry-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.entry-head .sum-side{font-size:13.5px}
+.sum-row{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.sum-row>div:first-child{display:flex;align-items:baseline;gap:8px}
+.photo{aspect-ratio:3/4;object-fit:cover}
+.cbtn{font-family:var(--body)}

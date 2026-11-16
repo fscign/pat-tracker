@@ -17,7 +17,6 @@ function drawDiagram(id, mirror){
   [[R-6,R-6,20],[TW-R+6,R-6,20],[R-6,TH-R+6,20],[TW-R+6,TH-R+6,20],[R-13,R+4*U,18],[TW-R+13,R+4*U,18]].forEach(c=>{ o+=`<circle cx="${c[0]}" cy="${c[1]}" r="${c[2]}" fill="#05090c"/>`; });
   for(let i=1;i<8;i++){ if(i===4) continue; o+=`<circle cx="15" cy="${R+i*U}" r="3" fill="#e8eef3"/><circle cx="${TW-15}" cy="${R+i*U}" r="3" fill="#e8eef3"/>`; }
   for(let j=1;j<4;j++) o+=`<circle cx="${R+j*U}" cy="15" r="3" fill="#e8eef3"/><circle cx="${R+j*U}" cy="${TH-15}" r="3" fill="#e8eef3"/>`;
-  o+=`<text x="${R+1.5*U}" y="19" class="dg-rail">FOOT</text><text x="${R+1.5*U}" y="${TH-11}" class="dg-rail">HEAD</text>`;
   o+=`<polygon points="${pt([2,2])} ${pt([1.25,1.57])} ${pt([1.25,2.43])}" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1.5" stroke-linejoin="round"/>`;
   [[2,2],[4,2],[6,2]].forEach(p=>{ const q=T(p); o+=`<circle cx="${q[0]}" cy="${q[1]}" r="2.6" fill="#fff" fill-opacity=".55"/>`; });
   (spec.zones||[]).forEach(z=>{
@@ -130,7 +129,7 @@ function render(keep){
   const y=window.scrollY, v=S.view;
   const html={ home:vHome, session:vSession, drill:vDrill, result:vResult, history:vHistory, insights:vInsights }[v.name]();
   app.innerHTML=html+(S.sheet?vSheet():'')+(S.toast?`<div class="toast" role="status">${esc(S.toast)}</div>`:'');
-  if(keep) window.scrollTo(0,y);
+  if(keep){ window.scrollTo(0,y); requestAnimationFrame(()=>window.scrollTo(0,y)); }
 }
 function toast(t){ S.toast=t; render(true); clearTimeout(toast.t); toast.t=setTimeout(()=>{ S.toast=''; const el=document.querySelector('.toast'); if(el) el.remove(); },2200); }
 const nav=cur=>`<nav class="tabs" aria-label="Sections">${[['home','Tests'],['history','History'],['insights','Insights']].map(t=>`<button data-act="tab" data-v="${t[0]}" class="${cur===t[0]?'on':''}"${cur===t[0]?' aria-current="page"':''}>${t[1]}</button>`).join('')}</nav>`;
@@ -208,13 +207,12 @@ function vDrill(){
   let h=topBar(`${ci+1}. ${cat.name}`,true,`<span class="step">${ci+1}/${t.cats.length}</span>`)+'<main>';
   if(cat.parts.length>1) h+=`<div class="seg" role="tablist">${cat.parts.map((p,i)=>{ const filled=p.fields.every((f,k)=>typeof s.scores[cat.id+'.'+p.id+'.'+k]==='number'); return `<button role="tab" aria-selected="${i===pi}" class="${i===pi?'on':''}${filled?' filled':''}" data-act="part" data-pi="${i}">${p.label}</button>`; }).join('')}</div>`;
   h+=`<h2 class="part-title">${part.title}</h2>`;
-  if(part.photo) h+=`<figure class="fig"><img class="photo" src="${part.photo}" alt="Set-up photo for ${esc(part.title)}" loading="lazy"></figure>`;
+  if(part.photo) h+=`<figure class="fig"><img class="photo" src="${part.photo}" width="720" height="960" alt="Set-up photo for ${esc(part.title)}" decoding="sync"></figure>`;
   else if(part.diagram) h+=`<figure class="fig">${drawDiagram(part.diagram,mir)}<figcaption><button class="link" data-act="mirror">${mir?'Show original side':'Mirror layout'}</button></figcaption></figure>`;
   else if(part.missing) h+=`<p class="missing">${part.missing}</p>`;
   h+=`<section class="card how">${part.tip?`<div class="tiprow">${tipSvg(part.tip,mir)}<span>Suggested tip position from the book</span></div>`:''}<ul>${part.how.map(x=>`<li>${x}</li>`).join('')}</ul></section>`;
   if(cat.timed){ const on=s.timer&&s.timer.cat===cat.id, tm=tOf(s,cat.id);
     h+=`<section class="card timer"><div class="t-row"><div><span class="flabel">Time</span><span class="big sm num" id="tval" data-cat="${cat.id}">${fmtT(tm)}</span></div><div class="t-btns">${on?`<button class="btn danger-solid" data-act="t-stop">Stop</button>`:`<button class="btn primary" data-act="t-start">${tm?'Resume':'Start'}</button>`}</div></div><div class="t-row"><label class="fine" for="tman">Or type it (min:sec)</label><input id="tman" class="tman" data-chg="time" inputmode="decimal" placeholder="8:43" value="${tm&&!on?fmtT(tm):''}"${on?' disabled':''}>${tm&&!on?'<button class="link" data-act="t-reset">Reset</button>':''}</div></section>`; }
-  h+=`<section class="card entry"><h3>${cat.kind==='errors'?'Your errors':'Your score'}</h3>${part.fields.map((f,i)=>{ const key=cat.id+'.'+part.id+'.'+i; return `<div class="field"><span class="flabel">${f.label}</span>${chips(key,f,s.scores[key])}</div>`; }).join('')}</section>`;
   // live summary
   const prev=sorted(t.id).filter(x=>x.id!==s.id).map(x=>catCalc(cat,x.scores)).filter(x=>x.complete).map(x=>x.pts);
   const lower=kind==='errors', best=prev.length?(lower?Math.min(...prev):Math.max(...prev)):null, last=prev.length?prev[prev.length-1]:null;
@@ -227,7 +225,12 @@ function vDrill(){
     else if(kind==='ghost'){ const v=part.fields.map((f,i)=>s.scores[cat.id+'.a.'+i]).filter(x=>typeof x==='number'); avgTxt=`average ${c.avg.toFixed(1)} per rack, ${v.filter(x=>x===15).length} break and runs`; scale=`<div class="meter"><div class="fill ${c.complete?bandK(t,cat,c.pts):''}" style="width:${Math.min(100,c.pts/150*100)}%"></div></div><div class="meter-lab"><span>0</span><span>150</span></div>`; }
     else avgTxt=`${c.sum} of ${c.complete?cat.cap:c.entered*7} so far`;
   }
-  h+=`<section class="card summary"><div class="sum-top"><div><span class="big ${c.complete?bandK(t,cat,c.pts):''}">${c.entered?c.pts:'&middot;'}</span><span class="of">${kind==='pat'||kind==='ghost'?'points':kind==='errors'?(c.pts===1?'error':'errors'):'percent'}${c.entered&&!c.complete?' so far':''}</span></div><div class="sum-side">${best!=null?`<span>${lower?'Fewest':'Best'} <b>${best}</b></span><span>Last <b>${last}</b></span>`:'<span>First time on this drill</span>'}${c.complete&&best!=null&&(lower?c.pts<best:c.pts>best)?'<span class="pill good">New best</span>':''}</div></div>${avgTxt?`<p class="fine">${c.entered} of ${c.n} entered, ${avgTxt}.</p>`:c.entered?'':`<p class="fine">${kind==='errors'?'Use + and minus to count errors as you play.':'Tap a number for each line above. Tap it again to clear it.'}</p>`}${scale}</section>`;
+  const hist=best!=null?`<span>${lower?'Fewest':'Best'} <b>${best}</b></span><span>Last <b>${last}</b></span>`:'<span>First time on this drill</span>';
+  const isNew=c.complete&&best!=null&&(lower?c.pts<best:c.pts>best)?'<span class="pill good">New best</span>':'';
+  const fieldsHtml=part.fields.map((f,i)=>{ const key=cat.id+'.'+part.id+'.'+i; return `<div class="field"><span class="flabel">${f.label}</span>${chips(key,f,s.scores[key])}</div>`; }).join('');
+  const showTotal=!(kind==='errors'&&c.n===1);
+  const hint=`<p class="fine">${kind==='errors'?'Use + and − to count your errors as you play.':'Tap a number for each line. Tap it again to clear it.'}</p>`;
+  h+=`<section class="card entry"><div class="entry-head"><h3>${kind==='errors'?'Your errors':'Your score'}</h3><div class="sum-side">${hist}${isNew}</div></div>${hint}${fieldsHtml}${showTotal?`<div class="sum-row"><div><span class="big ${c.complete?bandK(t,cat,c.pts):''}">${c.entered?c.pts:'&middot;'}</span><span class="of">${kind==='pat'||kind==='ghost'?'points':kind==='errors'?(c.pts===1?'error in total':'errors in total'):'percent'}${c.entered&&!c.complete?' so far':''}</span></div>${avgTxt&&kind!=='errors'?`<p class="fine">${c.entered} of ${c.n} entered, ${avgTxt}.</p>`:''}${scale}</div>`:''}</section>`;
   h+=`<section class="card"><label class="flabel" for="note">Notes for this drill</label><textarea id="note" data-inp="note" rows="2" placeholder="${kind==='errors'?'What caused the errors?':'What cost you points?'}">${esc(s.notes[cat.id]||'')}</textarea></section>`;
   const lastPart=pi===cat.parts.length-1, lastCat=ci===t.cats.length-1;
   h+=`</main><footer class="pager"><button class="btn ghost" data-act="prev"${ci===0&&pi===0?' disabled':''}>Back</button><button class="btn ghost" data-act="list">All drills</button><button class="btn primary" data-act="next">${lastPart&&lastCat?'Result':'Next'}</button></footer>`;
