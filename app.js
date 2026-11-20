@@ -223,10 +223,12 @@ function vHome(){
 }
 
 function homeBasis(t){
-  const done=completeOf(t.id).map(calcOf), g=done.map(c=>c.total), e=done.map(c=>c.errors);
-  const best=g.length?Math.max(...g):null, fewest=e.length?Math.min(...e):null, last=done.length?done[done.length-1]:null;
+  const all=sorted(t.id).map(calcOf), ec=all.filter(c=>c.errorsComplete), gc=all.filter(c=>c.ghostComplete);
+  const g=gc.map(c=>c.total), e=ec.map(c=>c.errors);
+  const best=g.length?Math.max(...g):null, fewest=e.length?Math.min(...e):null;
+  const last={ errors:ec.length?ec[ec.length-1].errors:'&middot;', total:gc.length?gc[gc.length-1].total:'&middot;' };
   return `<article class="card test"><div class="test-head"><div><h3>${t.name}</h3><p>${t.sub}</p></div>${spark(g.slice(-8),84,34)}</div>
-    <dl class="stats"><div><dt>Fewest errors</dt><dd>${fewest==null?'&middot;':fewest}</dd></div><div><dt>Best ghost</dt><dd>${best==null?'&middot;':best}</dd></div><div><dt>Last errors</dt><dd>${last?last.errors:'&middot;'}</dd></div><div><dt>Last ghost</dt><dd>${last?last.total:'&middot;'}</dd></div></dl>
+    <dl class="stats"><div><dt>Fewest errors</dt><dd>${fewest==null?'&middot;':fewest}</dd></div><div><dt>Best ghost</dt><dd>${best==null?'&middot;':best}</dd></div><div><dt>Last errors</dt><dd>${last.errors}</dd></div><div><dt>Last ghost</dt><dd>${last.total}</dd></div></dl>
     <p class="fine">Count your errors in drills 1 to 6, fewer is better. Then play 10 racks against the ghost, out of 150.</p>
     <button class="btn primary" data-act="start" data-test="${t.id}">Start ${t.name}</button></article>`;
 }
@@ -507,6 +509,7 @@ let noteT; document.addEventListener('input',e=>{ if(e.target.dataset.inp==='not
 window.addEventListener('hashchange',()=>{ const n=location.hash.slice(1); if(['home','history','insights'].includes(n)&&S.view.name!==n&&['home','history','insights'].includes(S.view.name)) go({ name:n }); });
 
 load();
+if(!S.prefs.migWarmup){ S.sessions.forEach(s=>{ if(s.test==='basis'&&typeof s.scores['b1.a.0']==='number'&&typeof s.scores['b1.a.1']!=='number'){ s.scores['b1.a.1']=0; s.updatedAt=Date.now(); } }); S.prefs.migWarmup=true; persist(); }
 { const n=location.hash.slice(1); S.view={ name:['history','insights'].includes(n)?n:'home' }; }
 render();
 if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
