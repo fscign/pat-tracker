@@ -12,6 +12,8 @@
   --accent:#5db4e6; --accent-ink:#06202f; --good:#47c284; --warn:#e5ad3d; --bad:#f0756b; color-scheme:dark; }
 *{box-sizing:border-box}
 html,body{margin:0}
+html{touch-action:manipulation}
+button,input,a,label{touch-action:manipulation}
 body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
 #app{max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:calc(84px + env(safe-area-inset-bottom));position:relative}
 main{display:flex;flex-direction:column;gap:18px;padding:4px 16px 24px}
@@ -194,3 +196,5 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 .vv small{font-size:11px;color:var(--muted);text-align:center}
 .vv b{font-size:20px}
 .shared-cat .entry-head{align-items:center}
+.tpair{display:flex;align-items:center;gap:6px}
+.tpair .tman{width:58px;text-align:center}

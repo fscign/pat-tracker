@@ -183,7 +183,7 @@ function trendChart(points, target, unit){
 
 /* ---------- Views ---------- */
 const app=document.getElementById('app');
-function go(v){ S.view=v; S.sheet=null; if(['home','history','insights'].includes(v.name)){ const h='#'+v.name; if(location.hash!==h){ try{ history.replaceState(null,'',h); }catch(e){ location.hash=h; } } } render(); window.scrollTo(0,0); }
+function go(v){ const cur=S.view; if(cur&&cur.name==='drill'){ const s0=sess(cur.id); if(s0&&s0.timer){ stopTimer(s0); touch(s0); } } S.view=v; S.sheet=null; if(['home','history','insights'].includes(v.name)){ const h='#'+v.name; if(location.hash!==h){ try{ history.replaceState(null,'',h); }catch(e){ location.hash=h; } } } render(); window.scrollTo(0,0); }
 function render(keep){
   const y=window.scrollY, v=S.view;
   const html={ home:vHome, session:vSession, drill:vDrill, result:vResult, history:vHistory, insights:vInsights, shared:vShared }[v.name]();
@@ -271,7 +271,8 @@ function vDrill(){
   else if(part.missing) h+=`<p class="missing">${part.missing}</p>`;
   h+=`<section class="card how">${part.tip?`<div class="tiprow">${tipSvg(part.tip,mir)}<span>Suggested tip position from the book</span></div>`:''}<ul>${part.how.map(x=>`<li>${x}</li>`).join('')}</ul></section>`;
   if(cat.timed){ const on=s.timer&&s.timer.cat===cat.id, tm=tOf(s,cat.id);
-    h+=`<section class="card timer"><div class="t-row"><div><span class="flabel">Time</span><span class="big sm num" id="tval" data-cat="${cat.id}">${fmtT(tm)}</span></div><div class="t-btns">${on?`<button class="btn danger-solid" data-act="t-stop">Stop</button>`:`<button class="btn primary" data-act="t-start">${tm?'Resume':'Start'}</button>`}</div></div><div class="t-row"><label class="fine" for="tman">Or type it (min:sec)</label><input id="tman" class="tman" data-chg="time" inputmode="decimal" placeholder="8:43" value="${tm&&!on?fmtT(tm):''}"${on?' disabled':''}>${tm&&!on?'<button class="link" data-act="t-reset">Reset</button>':''}</div></section>`; }
+    const mm=tm&&!on?Math.floor(Math.round(tm)/60):'', ss=tm&&!on?Math.round(tm)%60:'';
+    h+=`<section class="card timer"><div class="t-row"><div><span class="flabel">Time</span><span class="big sm num" id="tval" data-cat="${cat.id}">${fmtT(tm)}</span></div><div class="t-btns">${on?`<button class="btn danger-solid" data-act="t-stop">Stop</button>`:`<button class="btn primary" data-act="t-start">${tm?'Resume':'Start'}</button>`}</div></div><div class="t-row"><span class="fine">Or type it</span><div class="tpair"><input id="tmin" class="tman" data-chg="tmm" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="8" value="${mm}" aria-label="Minutes"${on?' disabled':''}><span class="fine">min</span><input id="tsec" class="tman" data-chg="tmm" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="43" value="${ss}" aria-label="Seconds"${on?' disabled':''}><span class="fine">sec</span></div>${tm&&!on?'<button class="link" data-act="t-reset">Reset</button>':''}</div><p class="fine">The clock stops by itself when you leave this drill.</p></section>`; }
   // live summary
   const prev=sorted(t.id).filter(x=>x.id!==s.id).map(x=>catCalc(cat,x.scores)).filter(x=>x.complete).map(x=>x.pts);
   const lower=kind==='errors', best=prev.length?(lower?Math.min(...prev):Math.max(...prev)):null, last=prev.length?prev[prev.length-1]:null;
@@ -309,7 +310,7 @@ function vResult(){
   if(t.mode==='sum'&&done.length) h+=`<span class="pill">${done.filter(x=>x.pts>=80).length} of ${done.length} drills at 80 or more</span>`;
   if(!c.complete) h+=`<span class="pill warn">Partial test</span>`;
   h+=`</div>`;
-  if(t.emblems&&c.complete){ const mx=t.emblems[t.emblems.length-1]*1.1; h+=`<div class="emb"><div class="emb-track"><div class="emb-fill" style="width:${Math.min(100,c.total/mx*100)}%"></div>${t.emblems.map(e=>`<i style="left:${e/mx*100}%" class="${c.total>=e?'hit':''}"><b>${e}</b></i>`).join('')}</div><p class="fine">Emblem lines in the PAT 3 book. ${c.total>=t.emblems[0]?`You cleared ${t.emblems.filter(e=>c.total>=e).pop()}.`:`${t.emblems[0]-c.total} short of the first line.`}</p></div>`; }
+  if(t.emblems&&c.complete){ const mx=t.emblems[t.emblems.length-1]*1.1; h+=`<div class="emb"><div class="emb-track"><div class="emb-fill" style="width:${Math.min(100,c.total/mx*100)}%"></div>${t.emblems.map(e=>`<i style="left:${e/mx*100}%" class="${c.total>=e?'hit':''}"><b>${e}</b></i>`).join('')}</div><p class="fine">Emblem lines in the ${t.name} book. ${c.total>=t.emblems[0]?`You cleared ${t.emblems.filter(e=>c.total>=e).pop()}.`:`${t.emblems[0]-c.total} short of the first line.`}</p></div>`; }
   h+=`</section>`;
   h+=`<section class="card"><h3>Points by drill</h3><div class="bars">${c.cats.map((x,i)=>{ const pv=prev?prev.cats[i]:null, d=x.complete&&pv&&pv.complete?x.pts-pv.pts:null;
     return `<button class="bar" data-act="drill" data-ci="${i}"><span class="bar-name">${i+1}. ${x.cat.name}</span><span class="bar-val num ${x.complete?band(t,x.pts):'dim'}">${x.entered?x.pts:'&middot;'}${d!=null&&d!==0?`<small class="${d>0?'up':'down'}">${d>0?'+':''}${d}</small>`:''}</span><span class="track"><span class="cap" style="width:${x.max/sm*100}%"></span>${x.entered?`<span class="fill ${band(t,x.pts)}" style="width:${Math.min(100,x.pts/sm*100)}%"></span>`:''}${t.mode==='sum'?`<i class="tick" style="left:${100/sm*100}%"></i>`:''}</span></button>`; }).join('')}</div>${t.mode==='sum'?'<p class="fine">The mark on each bar is the 100 point target. The pale track ends at that drill\'s maximum.</p>':''}</section>`;
@@ -479,6 +480,8 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('change',e=>{ if(e.target.id==='bk-file'&&e.target.files&&e.target.files[0]){ const f=e.target.files[0]; f.text().then(t=>{ const r=mergeBackup(t); S.sheet=null; if(r.error) toast(r.error); else { toast(r.added||r.updated?`Restored ${r.added} new, ${r.updated} updated`:'Nothing new in that backup'); } render(true); }); return; }
   if(e.target.dataset.chg==='date'&&e.target.value){ const s=sess(S.view.id); s.date=e.target.value; touch(s); }
+  if(e.target.dataset.chg==='tmm'){ const s=sess(S.view.id), cid=testById(s.test).cats[S.view.ci].id, m=document.getElementById('tmin').value.trim(), sc=document.getElementById('tsec').value.trim(); s.times=s.times||{};
+    if(!m&&!sc) delete s.times[cid]; else { const mi=parseInt(m||'0',10), se=parseInt(sc||'0',10); if(isNaN(mi)||isNaN(se)||se>59){ toast('Seconds go from 0 to 59'); return; } s.times[cid]=mi*60+se; } touch(s); const tv=document.getElementById('tval'); if(tv) tv.textContent=fmtT(tOf(s,cid)); return; }
   if(e.target.dataset.chg==='time'){ const s=sess(S.view.id), cid=testById(s.test).cats[S.view.ci].id, v=e.target.value.trim(); s.times=s.times||{}; if(!v) delete s.times[cid]; else { const sec=parseT(v); if(sec==null){ toast('Type the time as minutes:seconds, like 8:43'); return; } s.times[cid]=sec; } touch(s); render(true); } });
 
 document.addEventListener('submit',async e=>{

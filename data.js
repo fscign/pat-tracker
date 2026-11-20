@@ -17,6 +17,47 @@ function straightSet(objs,pk,xLine,nums){
 const col = (x,y0,step,n) => Array.from({length:n},(_,i)=>[x, +(y0+i*step).toFixed(3)]);
 
 const DIAGRAMS = {
+  /* ---------- PAT 1 ---------- */
+  p1_straight(){
+    const balls=[], lines=[];
+    [1,2,3].forEach(y=>{ balls.push(ob(2,y-.27), ob(2,y+.27), cue(6,y)); lines.push(path([[6,y],[0,y-.03],[7.3,y+.03]])); });
+    return { balls, lines, zones:[rect(6,0,8,4,'Stop here',[7.55,1.5])] };
+  },
+  p1_follow(){
+    const a=straightSet([[3,.2],[3,.46],[3,.72]],'TL',5,[1,2,3]), b=straightSet([[3,3.28],[3,3.54],[3,3.8]],'BL',5,[4,5,6]);
+    return { balls:[...a.balls,...b.balls], lines:[...a.lines,...b.lines], zones:[rect(0,0,1,1,'Zone',[.5,.6]), rect(0,3,1,4,'Zone',[.5,3.4])] };
+  },
+  p1_draw(){
+    const a=straightSet([[3,.2],[3,.46],[3,.72]],'TL',5,[1,2,3]), b=straightSet([[3,3.28],[3,3.54],[3,3.8]],'BL',5,[4,5,6]);
+    return { balls:[...a.balls,...b.balls], lines:[...a.lines,...b.lines, path([[3,.72],[8,1.4],[7.4,1.5]]), path([[3,3.28],[8,2.6],[7.4,2.5]])], zones:[rect(6,0,8,4,'Position zone',[7.2,2])] };
+  },
+  p1_small1(){
+    const b=[[4.5,.61],[4.28,.8],[4,.89],[3.72,.8],[3.5,.61]];
+    return { balls:b.map((p,i)=>ob(p[0],p[1],i+1)).concat([cue(4.95,.98), gh(4.55,1.25)]),
+      lines:[aimL([4.95,.98],[4.58,.66]), pot([4.5,.61],'TS'), path([[4.52,.72],[4.55,1.15]])] };
+  },
+  p1_small2(){
+    const xs=[.11,.33,.55,.77,.99];
+    return { balls:xs.map((x,i)=>ob(x,2,i+1)).concat([cue(.18,2.62), gh(.55,2.62)]),
+      lines:[aimL([.18,2.62],[.13,2.15]), pot([.11,2],'TL'), path([[.18,2.5],[.5,2.58]])] };
+  },
+  p1_large1(){
+    return { balls:[ob(6,2,1),ob(6,1.11,3),ob(6,HB,5), ob(2,2,2),ob(2,2.89,4),ob(2,4-HB,6), cue(5.7,2.6), gh(2.27,1.3)],
+      lines:[aimL([5.7,2.6],[5.93,2.15]), pot([6,2],'TR'), path([[5.95,2.05],[2.35,1.32]]), pot([2,2],'BL')] };
+  },
+  p1_large2(){
+    return { balls:[ob(6,2,1),ob(6.89,2,3),ob(8-HB,2,5), ob(2,2,2),ob(1.11,2,4),ob(HB,2,6), cue(5.8,2.6), gh(2.35,1.3)],
+      lines:[aimL([5.8,2.6],[5.95,2.15]), pot([6,2],'TR'), path([[5.95,2.05],[2.42,1.32]]), pot([2,2],'BL'), pot([1.11,2],'TL')] };
+  },
+  p1_frozen1(){ return { balls:[ob(1,F),ob(2,F),ob(F,1),ob(F,3),ob(1,4-F),ob(2,4-F), cue(2.3,.8)] }; },
+  p1_frozen2(){ return { balls:[ob(1,F),ob(3,F),ob(5,F),ob(7,F),ob(F,2),ob(8-F,2),ob(1,4-F),ob(3,4-F),ob(5,4-F),ob(7,4-F), cue(3.9,1.1)] }; },
+  p1_endless(){ return { balls:[ob(2,2,7),ob(4,2,9),ob(6,2,8), cue(2.2,2.65)] }; },
+  p1_9ball(){ return { balls:[ob(5.9,W1,3),ob(.29,1,7),ob(7.7,1,2),ob(2,2,5),ob(4,2,4),cue(5,2),ob(.29,3,8),ob(3,3,6),ob(6.85,3,1),ob(7.7,3,9)] }; },
+  p1_std1(){ return { balls:[ob(4,2,1), cue(7,.5), gh(7,3.5)], lines:[{pts:[[7,.5],[4.18,1.91]],k:'aim'}, pot([4,2],'BL'), {pts:[[7,3.5],[4.18,2.09]],k:'thin'}] }; },
+  p1_std2(){ return { balls:[ob(2,2,1), cue(6,.45), gh(6,.22), gh(6,3.55), gh(6,3.78)], lines:[aimL([6,.45],[2.2,1.93]), pot([2,2],'BL'), {pts:[[6,3.55],[2.2,2.07]],k:'thin'}] }; },
+  p1_std3(){ return { balls:[ob(3,4-W1,1), cue(7,1), gh(7,3)], lines:[aimL([7,1],[3.18,3.6]), pot([3,4-W1],'BL'), {pts:[[7,3],[3.18,.4]],k:'thin'}] }; },
+  p1_std4(){ return { balls:[ob(4,1.1,1), cue(7,.4), gh(7,.22), gh(7,3.6)], lines:[aimL([7,.4],[4.2,1.04]), pot([4,1.1],'TL'), {pts:[[7,3.6],[4.2,2.96]],k:'thin'}] }; },
+  p1_std5(){ return { balls:[ob(.45,3,1), cue(6.1,.55), gh(6.1,.3), gh(6.1,3.45)], lines:[aimL([6.1,.55],[.65,2.94]), {pts:[[.45,3],[.1,3.9]],k:'ob',arrow:1}] }; },
   pat2_speed(){
     const ys=[.5,1.5,2.5,3.5];
     return { balls: ys.map((y,i)=>ob(6,y,i+1)),
@@ -155,6 +196,29 @@ const STD_SHOTS = [
 const stdParts = () => STD_SHOTS.map(s=>({ ...s, fields:[{ label:'Made out of 3', max:3, min:0 }], how:[...s.how,'3 attempts. An attempt counts only if the ball is potted and the cue ball reaches the zone. After a make, play the next one from the other side of the table.'] }));
 
 const TESTS = [
+{ id:'pat1', name:'PAT 1', sub:'Playing Ability Test, level 1', mode:'sum', targetTotal:1000, emblems:[600,800,1000], cats:[
+  { id:'c1', name:'Speed Drill', target:3.33, factor:30, parts:[{ id:'a', title:'Speed Drill', diagram:'pat2_speed', fields:inn(3,4), how:['Four balls on the head string, one in each diamond segment. You may shift a ball along its segment, but only on the head string.','Shoot each ball itself down the table: ball 1 at Speed 1 (stops in the foot zone), ball 2 at Speed 2 (foot rail and back to the head zone), ball 3 at Speed 3, ball 4 at Speed 4.','Hitting another ball or a long rail is not allowed. 1 point for each ball that stops in its zone; the centre of the ball decides.','3 innings, up to 4 points each.'] }] },
+  { id:'c2', name:'Stroke Straightness', target:2.5, factor:40, parts:[{ id:'a', title:'Straightness at Speed 2', diagram:'p1_straight', fields:inn(4,3), how:['Cue ball from the head string through a gate of two balls set two ball widths apart. No side spin.','Speed 2: to the foot rail and back, and the cue ball has to stop in the head field.','A shot counts only if neither gate ball is touched and the speed is right. The centre of the ball decides.','4 innings of 3 shots. If the table is not true on all three lanes, shoot one lane three times.'] }] },
+  { id:'c3', name:'Follow Shot Drill', target:11, factor:9.1, parts:[{ id:'a', title:'Follow Shot Drill', diagram:'p1_follow', fields:inn(3,12), how:['Six balls on the third-diamond line, about half a ball apart and off the long rail. Cue ball anywhere on the fifth-diamond line, lined up with ball and corner pocket.','1 point for the pot, 1 more if the cue ball stops in the 1 by 1 diamond field at that corner. The cue ball following the ball into the pocket also counts.','No position point if the cue ball touches a neighbouring ball. Any order. 12 points per inning.'] }] },
+  { id:'c4', name:'Draw Shot Drill', target:10, factor:10, parts:[{ id:'a', title:'Draw Shot Drill', diagram:'p1_draw', fields:inn(3,12), how:['Six balls on the third-diamond line, half a ball apart and off the long rail. Cue ball anywhere on the fifth-diamond line, lined up with ball and corner pocket.','1 point for the pot, 1 more if the cue ball draws back, hits the head rail and stops in the head field.','No position point if the cue ball touches a neighbouring ball. On the balls next to the long rails the cue ball may use those rails, and a scratch in a head pocket still earns the position point.','The draw has to be clearly visible. 12 points per inning.'] }] },
+  { id:'c5', name:'Small Area Position', target:3.33, factor:30, parts:[
+    { id:'a', label:'5a', title:'Small Area Position Drill 1', diagram:'p1_small1', fields:inn(3,5), how:['Five balls in a half circle around a side pocket. The middle ball touches the first-diamond line with its far edge; the end balls sit on the half-diamond lines either side of the pocket.','Ball in hand. Play them in order, from one end of the half circle to the other, into that side pocket.','The cue ball may not touch a rail or another ball. Contact ends the inning and that ball does not count. A scratch also ends it.','Score is balls potted, up to 5.'] },
+    { id:'b', label:'5b', title:'Small Area Position Drill 2', diagram:'p1_small2', fields:inn(3,5), how:['Five balls frozen in a row on the centre line, the first one frozen to the foot rail.','Ball in hand. Play them in order, starting at the rail, all into the same corner pocket. The cue ball may use any number of rails.','Hitting another object ball or a scratch ends the inning and that ball does not count. If the last ball moves when you pot the first, re-spot it and carry on.','Score is balls potted, up to 5.'] } ] },
+  { id:'c6', name:'Large Area Position', target:3.33, factor:30, parts:[
+    { id:'a', label:'6a', title:'Large Area Position Drill 1', diagram:'p1_large1', fields:inn(3,6), how:['The 1 on the head spot, the 2 on the foot spot, the 5 and 6 half a ball off the long rails, the 3 and 4 halfway between.','Numerical order, ball in hand to start. Each ball only into its own corner pocket, as drawn.','Touching another ball or a scratch ends the inning and that ball does not count. No banks or combinations; kicks and jumps are allowed.','Score is balls potted, up to 6.'] },
+    { id:'b', label:'6b', title:'Large Area Position Drill 2', diagram:'p1_large2', fields:inn(3,6), how:['All six on the centre line: the 1 on the head spot, the 2 on the foot spot, the 5 and 6 half a ball off the short rails, the 3 and 4 halfway between.','Numerical order, ball in hand to start. Either corner pocket at that end of the table.','Touching another ball or a scratch ends the inning and that ball does not count. No banks or combinations; kicks and jumps are allowed.','Score is balls potted, up to 6.'] } ] },
+  { id:'c7', name:'Frozen Rail', target:4, factor:25, parts:[
+    { id:'a', label:'7a', title:'Frozen Rail Drill 1', diagram:'p1_frozen1', fields:inn(3,6), how:['Six balls frozen to the rails around the foot end, as drawn. Ball in hand to start.','Any order, any corner pocket.','No combinations, no banks, no touching other balls. Any of these, or a scratch, ends the inning and that ball does not count. Kicks and jumps are allowed.','Score is balls potted, up to 6.'] },
+    { id:'b', label:'7b', title:'Frozen Rail Drill 2', diagram:'p1_frozen2', fields:inn(3,10), how:['Ten balls frozen to the rails as drawn. The cue ball starts where drawn, not ball in hand.','Any order, any corner pocket.','No combinations, no banks, no touching other balls. Any of these, or a scratch, ends the inning and that ball does not count. Kicks and jumps are allowed.','Score is balls potted, up to 10.'] } ] },
+  { id:'c8', name:'Endless Position', target:4.5, factor:22.22, parts:[{ id:'a', title:'Endless Position Drill 1', diagram:'p1_endless', fields:inn(3,9), how:['The 7 on the foot spot, the 9 on the centre spot, the 8 on the head spot. Ball in hand to start.','Play 7, 8, 9 in order. Any pocket, but call it.','When all three are down, re-spot them and keep going from where the cue ball stopped.','Touching another ball or a scratch ends the inning. No banks or combinations. Capped at 9 balls per inning.'] }] },
+  { id:'c9', name:'Standard Shots', target:2, factor:50, parts:[
+    { id:'s1', label:'1', title:'Shot 1: centre spot to the corner', diagram:'p1_std1', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball on the centre spot, cue ball on the line from the far corner through the ball, so it is a straight shot into the opposite corner.','3 attempts. After a make, the next attempt is from the other side.','Only the pot counts here; where the cue ball goes, even a scratch, does not matter.'] },
+    { id:'s2', label:'2', title:'Shot 2: foot spot cut', diagram:'p1_std2', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball on the foot spot. Cue ball on the head string near the long rail (the book shows three possible spots).','Cut the ball into the far corner pocket on the other side.','3 attempts, changing sides after a make. Only the pot counts.'] },
+    { id:'s3', label:'3', title:'Shot 3: ball off the long rail', diagram:'p1_std3', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball one ball off the long rail on the third-diamond line. Cue ball on the seventh-diamond line, one diamond off the opposite rail.','Pot it along the rail into the foot corner pocket.','3 attempts, changing sides after a make. Only the pot counts.'] },
+    { id:'s4', label:'4', title:'Shot 4: side pocket line to the corner', diagram:'p1_std4', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball on the side pocket line, about one diamond off the long rail. Cue ball near the head corner on the same side.','Pot it into the foot corner pocket on that side.','3 attempts, changing sides after a make. Only the pot counts.'] },
+    { id:'s5', label:'5', title:'Shot 5: ball near the foot rail', diagram:'p1_std5', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball half a diamond off the foot rail, one diamond in from the long rail. Cue ball near the head string by the opposite long rail.','Cut it into the near foot corner pocket.','3 attempts, changing sides after a make. Only the pot counts.'] } ] },
+  { id:'c10', name:'9-Ball Situation', target:4.5, factor:22.22, parts:[{ id:'a', title:'9-Ball Situation Drill', diagram:'p1_9ball', fields:inn(3,9), how:['Set up the layout and try to clear the table under full 9-ball rules. The cue ball may touch other balls.','Balls potted on a foul do not count. A combination on the 9 scores the full 9, and luck counts.','3 innings, each from the same layout. Mirror it if you are left-handed.','Score is balls legally potted, up to 9.'] }] },
+]},
 { id:'pat2', name:'PAT 2', sub:'Playing Ability Test, level 2', mode:'sum', targetTotal:1000, cats:[
   { id:'c1', name:'Speed Drill', target:4, factor:25, parts:[{ id:'a', title:'Speed Drill', diagram:'pat2_speed', fields:inn(3,4), how:['Four balls on the head string, one per lane.','Shoot each ball itself down the table. Ball 1 at Speed 1 (one length, stops in the foot zone), ball 2 at Speed 2 (foot rail and back to the head zone), ball 3 at Speed 3, ball 4 at Speed 4.','1 point for each ball that stops in its zone without touching a long rail or another ball. The centre of the ball decides.','3 innings, up to 4 points each.'] }] },
   { id:'c2', name:'Stroke Straightness', target:1.5, factor:66.67, parts:[{ id:'a', title:'Straightness at Speed 3', diagram:'pat2_straight', fields:inn(4,3), how:['Cue ball from the head string through a gate of two balls set two ball widths apart. No side spin.','Speed 3: foot rail, head rail, then the cue ball has to stop in the marked end zone.','A shot counts only if neither gate ball is touched and the speed is right.','4 innings of 3 shots. Enter the number of good shots per inning. If the table is not true on all three lanes, shoot one lane three times.'] }] },
@@ -207,7 +271,7 @@ const TESTS = [
     { id:'p', label:'Position', title:'Workout: positions reached', diagram:null, missing:'The eight workout shots (PAT 3, page 48) were not in the scanned file. Set them up from the book.', fields:Array.from({length:8},(_,i)=>({label:'Shot '+(i+1), max:7, min:0})), how:['Enter how many times you also reached position. A position point only counts when the ball was potted.','The book puts the pass mark at 80 percent: 44.8 of 56 for each line.'] } ] },
 ]},
 { id:'basis', name:'Basis-Check', short:'Basis', sub:'Six drills scored by errors, then 10 racks against the ghost', mode:'basis', cats:[
-  { id:'b1', name:'Warm Up Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'Warm Up Drill', photo:'basis-1.jpg', fields:[{ label:'Errors, both rounds', counter:1 }], how:['Spread all 15 balls at least one diamond off every cushion.','Pocket every ball without the cue ball touching a rail. The cue ball may touch object balls, and object balls may touch the rails.','A miss or the cue ball touching a rail is an error. Take ball in hand after every error.','Play it twice and enter the errors from both rounds together.'] }] },
+  { id:'b1', name:'Warm Up Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'Warm Up Drill', photo:'basis-1.jpg', fields:[{ label:'Errors, round 1', counter:1 },{ label:'Errors, round 2', counter:1 }], how:['Spread all 15 balls at least one diamond off every cushion.','Pocket every ball without the cue ball touching a rail. The cue ball may touch object balls, and object balls may touch the rails.','A miss or the cue ball touching a rail is an error. Take ball in hand after every error.','Play it twice and count the errors of each round separately.'] }] },
   { id:'b2', name:'Technique Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'Technique Drill', photo:'basis-2.jpg', fields:[{ label:'Errors', counter:1 }], how:['Five object balls on the third diamond on each side.','Ball in hand two diamonds away. Pot the ball and follow the cue ball into the same pocket.','If both balls do not drop, or the cue ball does not follow in, it is an error. Put the ball back and play it again.'] }] },
   { id:'b3', name:'S Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'S Drill', photo:'basis-3.jpg', fields:[{ label:'Errors, round 1', counter:1 },{ label:'Errors, round 2', counter:1 }], how:['Five balls on the second diamond on each side of the table, about a quarter diamond off the rail.','Pot them from the outside in. For every position the cue ball goes exactly two rails: short rail, then long rail.','A miss or touching another ball is an error. Take ball in hand after an error.','Round 1 is one side, round 2 the other side.'] }] },
   { id:'b4', name:'Quadrant Drill', kind:'errors', timed:true, parts:[{ id:'a', title:'Quadrant Drill', photo:'basis-4.jpg', fields:[{ label:'Errors, round 1', counter:1 },{ label:'Errors, round 2', counter:1 }], how:['All 15 balls at random around the second diamond, about half a ball off the rail.','Pot them in rotation, 1 to 15, without touching another ball.','The cue ball has to stay in that quadrant: it may never pass the second diamond.','A miss or touching another object ball is an error. Take ball in hand after an error. Play it twice.'] }] },
