@@ -198,3 +198,6 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 .shared-cat .entry-head{align-items:center}
 .tpair{display:flex;align-items:center;gap:6px}
 .tpair .tman{width:58px;text-align:center}
+.pic{width:100%;height:auto;border-radius:12px;border:1px solid var(--line);display:block;-webkit-touch-callout:default}
+a.btn{text-decoration:none;color:inherit}
+a.btn.primary{color:var(--accent-ink)}

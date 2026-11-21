@@ -128,6 +128,67 @@ window.addEventListener('online',()=>flush());
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&me()){ if(Date.now()-lastPull>300000) pullAll(); else flush(); } });
 const authMsg=e=>{ const m={ 'auth/email-already-in-use':'There is already an account with that email. Sign in instead.', 'auth/invalid-email':'That email address does not look right.', 'auth/weak-password':'Use a password of at least 6 characters.', 'auth/invalid-credential':'Wrong email or password.', 'auth/wrong-password':'Wrong email or password.', 'auth/user-not-found':'Wrong email or password.', 'auth/too-many-requests':'Too many tries. Wait a few minutes and try again.', 'auth/network-request-failed':'No connection. Try again when you are online.', 'pat/bad-nick':'Nickname: 3 to 20 letters, digits, dot, dash or underscore.', 'pat/nick-taken':'That nickname is taken. Pick another one.' }; return m[e&&e.code]||'Something went wrong. Try again.'; };
 
+
+/* ---------- Result as a picture ---------- */
+async function resultPicture(s){
+  const t=testById(s.test), c=calcOf(s), basis=isB(t);
+  try{ await Promise.all(['700 64px "Barlow Condensed"','600 30px "Barlow Condensed"','500 28px Barlow','600 28px Barlow'].map(f=>document.fonts.load(f))); }catch(e){}
+  const W=1080, P=64, rowH=basis?84:78;
+  const errCats=basis?c.cats.filter(x=>x.kind==='errors'):c.cats;
+  const g=basis?c.cats.find(x=>x.kind==='ghost'):null;
+  const H=P+200+230+errCats.length*rowH+(basis?260:0)+(t.emblems&&c.complete?110:0)+110;
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
+  const C={ bg:'#eef2f5', card:'#ffffff', ink:'#10212f', muted:'#5a6b79', line:'#d7dfe6', acc:'#0b6aa8', good:'#1a8552', warn:'#a8700a', bad:'#c23b32' };
+  const col=b=>b==='good'?C.good:b==='warn'?C.warn:b==='bad'?C.bad:C.ink;
+  const D='"Barlow Condensed","Arial Narrow",sans-serif', B='Barlow,system-ui,sans-serif';
+  const rr=(X,Y,w,h,r)=>{ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r); x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath(); };
+  x.fillStyle=C.bg; x.fillRect(0,0,W,H);
+  // header band in table-cloth blue
+  x.fillStyle=C.acc; x.fillRect(0,0,W,P+150);
+  x.fillStyle='#fff'; x.font=`700 72px ${D}`; x.textBaseline='alphabetic'; x.fillText(t.name,P,P+70);
+  x.font=`500 30px ${B}`; x.fillStyle='rgba(255,255,255,.85)'; x.fillText(fmtDate(s.date)+(c.complete?'':`  ·  ${c.doneCount} of ${t.cats.length} drills`),P,P+118);
+  x.textAlign='right'; x.font=`600 28px ${D}`; x.fillStyle='rgba(255,255,255,.75)'; x.fillText('PAT TRACKER',W-P,P+30); x.textAlign='left';
+  // totals card
+  let y=P+180; rr(P,y,W-2*P,200,24); x.fillStyle=C.card; x.fill();
+  const big=(val,label,X,colr)=>{ x.fillStyle=colr||C.ink; x.font=`700 108px ${D}`; x.fillText(String(val),X,y+118); const w=x.measureText(String(val)).width; x.fillStyle=C.muted; x.font=`500 28px ${B}`; x.fillText(label,X,y+165); return w; };
+  if(basis){ const tt=tTotal(s,t); big(c.errors,'errors',P+40); big(c.total,'ghost, of 150',P+330); if(tt) big(fmtT(tt),'time',P+660); }
+  else { big(c.total, t.mode==='sum'?`of ${t.targetTotal} target · ceiling ${c.maxTotal}`:'average percent', P+40); }
+  y+=230;
+  // rows
+  const mx=basis?Math.max(4,...errCats.map(r=>r.pts||0)):Math.max(100,...c.cats.map(r=>r.max||100));
+  errCats.forEach((r,i)=>{
+    const ry=y+i*rowH;
+    x.fillStyle=C.ink; x.font=`500 30px ${B}`; x.fillText(`${i+1}. ${r.cat.name}`,P,ry+32);
+    if(basis){ const tm=tOf(s,r.cat.id); if(tm){ x.fillStyle=C.muted; x.font=`500 26px ${B}`; const nw=x.measureText(`${i+1}. ${r.cat.name}`).width; x.font=`500 30px ${B}`; const nw2=x.measureText(`${i+1}. ${r.cat.name}`).width; x.font=`500 26px ${B}`; x.fillText(fmtT(tm),P+nw2+18,ry+32); } }
+    const v=r.entered?r.pts:'·', b=r.complete?bandK(t,r.cat,r.pts):'';
+    x.textAlign='right'; x.fillStyle=r.entered?col(b):C.muted; x.font=`700 44px ${D}`; x.fillText(String(v),W-P,ry+38); x.textAlign='left';
+    const bw=W-2*P-90, by=ry+52;
+    rr(P,by,bw,12,6); x.fillStyle=C.line; x.fill();
+    if(r.entered&&r.pts){ rr(P,by,Math.max(12,Math.min(1,r.pts/mx)*bw),12,6); x.fillStyle=col(b)===C.ink?C.acc:col(b); x.fill(); }
+    if(t.mode==='sum'){ const tx=P+100/mx*bw; x.fillStyle=C.ink; x.fillRect(tx-1.5,by-5,3,22); }
+  });
+  y+=errCats.length*rowH+10;
+  if(basis&&g){
+    x.fillStyle=C.ink; x.font=`700 40px ${D}`; x.fillText('Ghost 9-Ball',P,y+40);
+    x.textAlign='right'; x.font=`700 44px ${D}`; x.fillText(g.entered?String(g.pts):'·',W-P,y+42); x.textAlign='left';
+    const racks=g.cat.parts[0].fields.map((f,i)=>s.scores[g.cat.id+'.a.'+i]), cw=(W-2*P-9*12)/10;
+    racks.forEach((v,i)=>{ const rx=P+i*(cw+12), ry=y+70; rr(rx,ry,cw,110,16);
+      if(v===15){ x.fillStyle=C.good; x.fill(); } else { x.fillStyle=C.card; x.fill(); x.lineWidth=3; x.strokeStyle=v===10?C.good:C.line; x.stroke(); }
+      x.textAlign='center'; x.fillStyle=v===15?'#fff':C.muted; x.font=`600 22px ${B}`; x.fillText(String(i+1),rx+cw/2,ry+32);
+      x.fillStyle=v===15?'#fff':v===10?C.good:C.ink; x.font=`700 46px ${D}`; x.fillText(typeof v==='number'?String(v):'·',rx+cw/2,ry+88); x.textAlign='left'; });
+    x.fillStyle=C.muted; x.font=`500 26px ${B}`; x.fillText(`${racks.filter(v=>v===15).length} break and runs · ${racks.filter(v=>v===10).length} runs after ball in hand`,P,y+225);
+    y+=260;
+  }
+  if(t.emblems&&c.complete){ const hit=t.emblems.filter(e=>c.total>=e); x.fillStyle=C.muted; x.font=`500 28px ${B}`; x.fillText(hit.length?`Cleared the ${hit[hit.length-1]} line in the ${t.name} book.`:`${t.emblems[0]-c.total} short of the first ${t.name} emblem line (${t.emblems[0]}).`,P,y+50); y+=110; }
+  return new Promise(res=>cv.toBlob(b=>res(b),'image/png'));
+}
+async function openPicture(s){
+  S.sheet={ kind:'pic', busy:true }; render(true);
+  const blob=await resultPicture(s); if(!S.sheet||S.sheet.kind!=='pic') return;
+  const t=testById(s.test), name=`${t.name.replace(/\s+/g,'-')}-${s.date}.png`;
+  S.sheet={ kind:'pic', file:new File([blob],name,{ type:'image/png' }), url:URL.createObjectURL(blob), name }; render(true);
+}
+
 /* ---------- Backup and restore (scores live on this phone) ---------- */
 function backupJSON(){ return JSON.stringify({ app:'pat-tracker', v:1, exported:new Date().toISOString(), sessions:S.sessions.filter(hasData).map(s=>{ const c=Object.assign({},s); if(c.timer){ c.times=Object.assign({},c.times); c.times[c.timer.cat]=Math.round(tOf(s,c.timer.cat)); delete c.timer; } return c; }) }); }
 function cleanSession(r){
@@ -322,7 +383,7 @@ function vResult(){
   }
   const notes=t.cats.filter(k=>s.notes[k.id]);
   if(notes.length) h+=`<section class="card"><h3>Your notes</h3>${notes.map(k=>`<p class="noteline"><b>${k.name}</b> ${esc(s.notes[k.id])}</p>`).join('')}</section>`;
-  h+=`<div class="actions"><button class="btn primary" data-act="edit">Edit scores</button>${C()&&s?`<button class="btn" data-act="share">${(s.sharedWith||[]).length?`Shared with ${(s.sharedWith||[]).map(u=>esc((s.sharedNames||{})[u]||'someone')).join(', ')}`:'Share this test'}</button>`:''}<button class="btn" data-act="copy">Copy summary</button><button class="btn ghost danger" data-act="askdel">Delete this test</button></div></main>`;
+  h+=`<div class="actions"><button class="btn primary" data-act="edit">Edit scores</button>${C()&&s?`<button class="btn" data-act="share">${(s.sharedWith||[]).length?`Shared with ${(s.sharedWith||[]).map(u=>esc((s.sharedNames||{})[u]||'someone')).join(', ')}`:'Share this test'}</button>`:''}<button class="btn" data-act="pic">Share as picture</button><button class="btn" data-act="copy">Copy summary</button><button class="btn ghost danger" data-act="askdel">Delete this test</button></div></main>`;
   return h;
 }
 
@@ -343,7 +404,7 @@ function vResultBasis(s,t,c){
   h+=`<section class="card"><button class="row plain" data-act="drill" data-ci="${gi}"><span class="row-main"><b>Ghost 9-Ball</b><small>${racks.filter(v=>v===15).length} break and runs · ${racks.filter(v=>v===10).length} runs after ball in hand</small></span><span class="num">${g.entered?g.pts:'&middot;'}</span><span class="chev">&#8250;</span></button><div class="racks">${racks.map((v,i)=>`<span class="rk ${v===15?'r15':v===10?'r10':typeof v==='number'?'rx':'re'}"><small>${i+1}</small>${typeof v==='number'?v:'&middot;'}</span>`).join('')}</div></section>`;
   const notes=t.cats.filter(k=>s.notes[k.id]);
   if(notes.length) h+=`<section class="card"><h3>Your notes</h3>${notes.map(k=>`<p class="noteline"><b>${k.name}</b> ${esc(s.notes[k.id])}</p>`).join('')}</section>`;
-  h+=`<div class="actions"><button class="btn primary" data-act="edit">Edit scores</button>${C()&&s?`<button class="btn" data-act="share">${(s.sharedWith||[]).length?`Shared with ${(s.sharedWith||[]).map(u=>esc((s.sharedNames||{})[u]||'someone')).join(', ')}`:'Share this test'}</button>`:''}<button class="btn" data-act="copy">Copy summary</button><button class="btn ghost danger" data-act="askdel">Delete this test</button></div></main>`;
+  h+=`<div class="actions"><button class="btn primary" data-act="edit">Edit scores</button>${C()&&s?`<button class="btn" data-act="share">${(s.sharedWith||[]).length?`Shared with ${(s.sharedWith||[]).map(u=>esc((s.sharedNames||{})[u]||'someone')).join(', ')}`:'Share this test'}</button>`:''}<button class="btn" data-act="pic">Share as picture</button><button class="btn" data-act="copy">Copy summary</button><button class="btn ghost danger" data-act="askdel">Delete this test</button></div></main>`;
   return h;
 }
 
@@ -427,6 +488,10 @@ function vSheet(){ const sh=S.sheet;
     else b=`<h3>Sign in</h3><form class="form" data-form="signin"><label for="f-email">Email</label><input id="f-email" value="${esc((sh.vals||{})["f-email"]||"")}" type="email" autocomplete="email" required><label for="f-pass">Password</label><input id="f-pass" value="${esc((sh.vals||{})["f-pass"]||"")}" type="password" autocomplete="current-password" required>${err}<button class="btn primary"${busy}>Sign in</button></form><p class="fine">New here? <button class="link" data-act="amode" data-mode="signup">Create an account</button> · <button class="link" data-act="amode" data-mode="reset">Forgot password</button></p><p class="fine">Tests already on this phone move into your account when you sign in.</p>`;
     return `<div class="scrim" data-act="cancel"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Account">${b}</div>`;
   }
+  if(sh.kind==='pic'){
+    const canShare=sh.file&&navigator.canShare&&navigator.canShare({ files:[sh.file] });
+    return `<div class="scrim" data-act="closepic"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Result picture"><h3>Result picture</h3>${sh.busy?'<p class="fine">Making the picture...</p>':`<img class="pic" src="${sh.url}" alt="Picture of this result"><div class="actions">${canShare?'<button class="btn primary" data-act="sharepic">Share or save...</button>':''}<a class="btn${canShare?'':' primary'} file-btn" href="${sh.url}" download="${esc(sh.name)}">Save picture</a><p class="fine">You can also press and hold the picture to save or share it.</p><button class="btn ghost" data-act="closepic">Close</button></div>`}</div>`;
+  }
   if(sh.kind==='share'){
     const s=sess(S.view.id), names=s.sharedWith||[], err=sh.err?`<p class="err" role="alert">${esc(sh.err)}</p>`:'';
     return `<div class="scrim" data-act="cancel"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Share"><h3>Share this test</h3><p class="fine">They see this test in full, with every drill, time and note. They do not see your other tests, your best or your history.</p><form class="form" data-form="share"><label for="f-share">Email or nickname</label><div class="inrow"><input id="f-share" value="${esc((sh.vals||{})["f-share"]||"")}" autocapitalize="off" autocomplete="off" required><button class="btn primary"${sh.busy?' disabled':''}>Share</button></div>${err}</form>${names.length?`<ul class="shared-list">${names.map(u=>`<li><span>${esc((s.sharedNames||{})[u]||'someone')}</span><button class="link danger" data-act="unshare" data-uid="${esc(u)}">Stop sharing</button></li>`).join('')}</ul>`:''}<div class="actions"><button class="btn ghost" data-act="cancel">Done</button></div></div>`;
@@ -478,6 +543,9 @@ document.addEventListener('click',e=>{
   else if(a==='openshared') go({ name:'shared', key:b.dataset.key });
   else if(a==='bk-save') saveBackup();
   else if(a==='del'){ removeSession(v.id); go({ name:'history' }); toast('Test deleted'); }
+  else if(a==='pic') openPicture(s);
+  else if(a==='sharepic'){ const f=S.sheet&&S.sheet.file; if(f){ navigator.share({ files:[f] }).catch(err=>{ if(!err||err.name!=='AbortError') toast('Sharing did not work. Press and hold the picture instead.'); }); } }
+  else if(a==='closepic'){ if(S.sheet&&S.sheet.url) URL.revokeObjectURL(S.sheet.url); S.sheet=null; render(true); }
   else if(a==='copy'){ const txt=summaryText(s); try{ navigator.clipboard.writeText(txt).then(()=>toast('Summary copied'),()=>toast('Copy was blocked by the browser')); }catch(err){ toast('Copy was blocked by the browser'); } }
 });
 document.addEventListener('change',e=>{ if(e.target.id==='bk-file'&&e.target.files&&e.target.files[0]){ const f=e.target.files[0]; f.text().then(t=>{ const r=mergeBackup(t); S.sheet=null; if(r.error) toast(r.error); else { toast(r.added||r.updated?`Restored ${r.added} new, ${r.updated} updated`:'Nothing new in that backup'); } render(true); }); return; }
