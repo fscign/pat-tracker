@@ -130,6 +130,7 @@ const authMsg=e=>{ const m={ 'auth/email-already-in-use':'There is already an ac
 
 
 /* ---------- Result as a picture ---------- */
+const picName=()=>S.prefs.picName!=null?S.prefs.picName:(me()&&me().nick)||'';
 async function resultPicture(s){
   const t=testById(s.test), c=calcOf(s), basis=isB(t);
   try{ await Promise.all(['700 64px "Barlow Condensed"','600 30px "Barlow Condensed"','500 28px Barlow','600 28px Barlow'].map(f=>document.fonts.load(f))); }catch(e){}
@@ -146,7 +147,8 @@ async function resultPicture(s){
   // header band in table-cloth blue
   x.fillStyle=C.acc; x.fillRect(0,0,W,P+150);
   x.fillStyle='#fff'; x.font=`700 72px ${D}`; x.textBaseline='alphabetic'; x.fillText(t.name,P,P+70);
-  x.font=`500 30px ${B}`; x.fillStyle='rgba(255,255,255,.85)'; x.fillText(fmtDate(s.date)+(c.complete?'':`  ·  ${c.doneCount} of ${t.cats.length} drills`),P,P+118);
+  const who=picName().trim().slice(0,40);
+  x.font=`500 30px ${B}`; x.fillStyle='rgba(255,255,255,.85)'; x.fillText((who?who+'  ·  ':'')+fmtDate(s.date)+(c.complete?'':`  ·  ${c.doneCount} of ${t.cats.length} drills`),P,P+118);
   x.textAlign='right'; x.font=`600 28px ${D}`; x.fillStyle='rgba(255,255,255,.75)'; x.fillText('PAT TRACKER',W-P,P+30); x.textAlign='left';
   // totals card
   let y=P+180; rr(P,y,W-2*P,200,24); x.fillStyle=C.card; x.fill();
@@ -186,7 +188,9 @@ async function openPicture(s){
   S.sheet={ kind:'pic', busy:true }; render(true);
   const blob=await resultPicture(s); if(!S.sheet||S.sheet.kind!=='pic') return;
   const t=testById(s.test), name=`${t.name.replace(/\s+/g,'-')}-${s.date}.png`;
-  S.sheet={ kind:'pic', file:new File([blob],name,{ type:'image/png' }), url:URL.createObjectURL(blob), name }; render(true);
+  const url=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(blob); });
+  if(!S.sheet||S.sheet.kind!=='pic') return;
+  S.sheet={ kind:'pic', file:new File([blob],name,{ type:'image/png' }), url, name }; render(true);
 }
 
 /* ---------- Backup and restore (scores live on this phone) ---------- */
@@ -490,7 +494,7 @@ function vSheet(){ const sh=S.sheet;
   }
   if(sh.kind==='pic'){
     const canShare=sh.file&&navigator.canShare&&navigator.canShare({ files:[sh.file] });
-    return `<div class="scrim" data-act="closepic"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Result picture"><h3>Result picture</h3>${sh.busy?'<p class="fine">Making the picture...</p>':`<img class="pic" src="${sh.url}" alt="Picture of this result"><div class="actions">${canShare?'<button class="btn primary" data-act="sharepic">Share or save...</button>':''}<a class="btn${canShare?'':' primary'} file-btn" href="${sh.url}" download="${esc(sh.name)}">Save picture</a><p class="fine">You can also press and hold the picture to save or share it.</p><button class="btn ghost" data-act="closepic">Close</button></div>`}</div>`;
+    return `<div class="scrim" data-act="closepic"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Result picture"><h3>Result picture</h3><div class="form"><label for="pic-name">Name on the picture</label><input id="pic-name" data-chg="picname" value="${esc(picName())}" placeholder="Your name" maxlength="40" autocomplete="name"></div>${sh.busy?'<p class="fine">Making the picture...</p>':`<img class="pic" src="${sh.url}" alt="Picture of this result"><div class="actions">${canShare?'<button class="btn primary" data-act="sharepic">Share or save...</button><p class="fine">Pick WhatsApp, Messages and so on, or Save Image to put it in your Photos.</p>':`<a class="btn primary file-btn" href="${sh.url}" download="${esc(sh.name)}">Save picture</a><p class="fine">Or press and hold the picture to save it.</p>`}<button class="btn ghost" data-act="closepic">Close</button></div>`}</div>`;
   }
   if(sh.kind==='share'){
     const s=sess(S.view.id), names=s.sharedWith||[], err=sh.err?`<p class="err" role="alert">${esc(sh.err)}</p>`:'';
@@ -545,10 +549,11 @@ document.addEventListener('click',e=>{
   else if(a==='del'){ removeSession(v.id); go({ name:'history' }); toast('Test deleted'); }
   else if(a==='pic') openPicture(s);
   else if(a==='sharepic'){ const f=S.sheet&&S.sheet.file; if(f){ navigator.share({ files:[f] }).catch(err=>{ if(!err||err.name!=='AbortError') toast('Sharing did not work. Press and hold the picture instead.'); }); } }
-  else if(a==='closepic'){ if(S.sheet&&S.sheet.url) URL.revokeObjectURL(S.sheet.url); S.sheet=null; render(true); }
+  else if(a==='closepic'){ S.sheet=null; render(true); }
   else if(a==='copy'){ const txt=summaryText(s); try{ navigator.clipboard.writeText(txt).then(()=>toast('Summary copied'),()=>toast('Copy was blocked by the browser')); }catch(err){ toast('Copy was blocked by the browser'); } }
 });
-document.addEventListener('change',e=>{ if(e.target.id==='bk-file'&&e.target.files&&e.target.files[0]){ const f=e.target.files[0]; f.text().then(t=>{ const r=mergeBackup(t); S.sheet=null; if(r.error) toast(r.error); else { toast(r.added||r.updated?`Restored ${r.added} new, ${r.updated} updated`:'Nothing new in that backup'); } render(true); }); return; }
+document.addEventListener('change',e=>{ if(e.target.dataset.chg==='picname'){ S.prefs.picName=e.target.value; persist(); const s=sess(S.view.id); if(s) openPicture(s); return; }
+  if(e.target.id==='bk-file'&&e.target.files&&e.target.files[0]){ const f=e.target.files[0]; f.text().then(t=>{ const r=mergeBackup(t); S.sheet=null; if(r.error) toast(r.error); else { toast(r.added||r.updated?`Restored ${r.added} new, ${r.updated} updated`:'Nothing new in that backup'); } render(true); }); return; }
   if(e.target.dataset.chg==='date'&&e.target.value){ const s=sess(S.view.id); s.date=e.target.value; touch(s); }
   if(e.target.dataset.chg==='tmm'){ const s=sess(S.view.id), cid=testById(s.test).cats[S.view.ci].id, m=document.getElementById('tmin').value.trim(), sc=document.getElementById('tsec').value.trim(); s.times=s.times||{};
     if(!m&&!sc) delete s.times[cid]; else { const mi=parseInt(m||'0',10), se=parseInt(sc||'0',10); if(isNaN(mi)||isNaN(se)||se>59){ toast('Seconds go from 0 to 59'); return; } s.times[cid]=mi*60+se; } touch(s); const tv=document.getElementById('tval'); if(tv) tv.textContent=fmtT(tOf(s,cid)); return; }
