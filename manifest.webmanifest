@@ -1,6 +1,6 @@
 {
-  "name": "PAT Tracker",
-  "short_name": "PAT",
+  "name": "Pool Progress",
+  "short_name": "Pool Progress",
   "description": "Score the Playing Ability Test drills and track your progress.",
   "start_url": "./",
   "scope": "./",

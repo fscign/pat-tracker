@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>PAT Tracker</title>
+<title>Pool Progress</title>
 <meta name="theme-color" content="#eef2f5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b141b" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="PAT">
+<meta name="apple-mobile-web-app-title" content="Pool Progress">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="robots" content="noindex">
 <link rel="manifest" href="manifest.webmanifest">
@@ -695,7 +695,7 @@ async function resultPicture(s){
   x.fillStyle='#fff'; x.font=`700 72px ${D}`; x.textBaseline='alphabetic'; x.fillText(t.name,P,P+70);
   const who=picName().trim().slice(0,40);
   x.font=`500 30px ${B}`; x.fillStyle='rgba(255,255,255,.85)'; x.fillText((who?who+'  ·  ':'')+fmtDate(s.date)+(c.complete?'':`  ·  ${c.doneCount} of ${t.cats.length} drills`),P,P+118);
-  x.textAlign='right'; x.font=`600 28px ${D}`; x.fillStyle='rgba(255,255,255,.75)'; x.fillText('PAT TRACKER',W-P,P+30); x.textAlign='left';
+  x.textAlign='right'; x.font=`600 28px ${D}`; x.fillStyle='rgba(255,255,255,.75)'; x.fillText('POOL PROGRESS',W-P,P+30); x.textAlign='left';
   // totals card
   let y=P+180; rr(P,y,W-2*P,200,24); x.fillStyle=C.card; x.fill();
   const big=(val,label,X,colr)=>{ x.fillStyle=colr||C.ink; x.font=`700 108px ${D}`; x.fillText(String(val),X,y+118); const w=x.measureText(String(val)).width; x.fillStyle=C.muted; x.font=`500 28px ${B}`; x.fillText(label,X,y+165); return w; };
@@ -750,8 +750,8 @@ function cleanSession(r){
   return { id:r.id.slice(0,40), test:r.test, times, sharedWith, sharedNames, date:/^\d{4}-\d{2}-\d{2}$/.test(r.date)?r.date:today(), created:+r.created||Date.now(), updatedAt:+r.updatedAt||0, scores, notes, finished:!!r.finished };
 }
 function mergeBackup(text){
-  let d; try{ d=JSON.parse(text); }catch(e){ return { error:'That file is not a PAT Tracker backup.' }; }
-  if(!d||d.app!=='pat-tracker'||!Array.isArray(d.sessions)) return { error:'That file is not a PAT Tracker backup.' };
+  let d; try{ d=JSON.parse(text); }catch(e){ return { error:'That file is not a Pool Progress backup.' }; }
+  if(!d||d.app!=='pat-tracker'||!Array.isArray(d.sessions)) return { error:'That file is not a Pool Progress backup.' };
   let added=0, updated=0;
   d.sessions.forEach(r=>{ const c=cleanSession(r); if(!c) return; const l=sess(c.id);
     if(!l){ S.sessions.push(c); S.tomb=S.tomb.filter(t=>t!==c.id); added++; }
@@ -759,9 +759,9 @@ function mergeBackup(text){
   persist(); return { added, updated };
 }
 async function saveBackup(){
-  const name='pat-tracker-backup-'+today()+'.json', text=backupJSON();
+  const name='pool-progress-backup-'+today()+'.json', text=backupJSON();
   const file=new File([text], name, { type:'application/json' });
-  try{ if(navigator.canShare&&navigator.canShare({ files:[file] })){ await navigator.share({ files:[file], title:'PAT Tracker backup' }); markBackup(); return; } }
+  try{ if(navigator.canShare&&navigator.canShare({ files:[file] })){ await navigator.share({ files:[file], title:'Pool Progress backup' }); markBackup(); return; } }
   catch(e){ if(e&&e.name==='AbortError') return; }
   try{ const url=URL.createObjectURL(file), a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000); markBackup(); toast('Backup file saved'); }
   catch(e){ toast('Could not save the file'); }
@@ -818,7 +818,7 @@ const catSub=c=>{ const k=c.cat.kind||'pat'; if(k==='errors') return c.cat.parts
 function vHome(){
   S.sessions=S.sessions.filter(s=>hasData(s)||Date.now()-s.created<5000||S.view.id===s.id);
   const open=S.sessions.filter(s=>hasData(s)&&!s.finished).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,3);
-  let h=`<header class="top home"><div><h1>PAT Tracker</h1><p class="sub">Score a test, see where the points went.</p></div><div class="hbtns">${C()?`<button class="sync" data-act="account">${me()?esc(me().nick||'Account'):'Sign in'}</button>`:''}<button class="sync" data-act="backup">Backup</button></div></header><main>`;
+  let h=`<header class="top home"><div><h1>Pool Progress</h1><p class="sub">Score a test, see where the points went.</p></div><div class="hbtns">${C()?`<button class="sync" data-act="account">${me()?esc(me().nick||'Account'):'Sign in'}</button>`:''}<button class="sync" data-act="backup">Backup</button></div></header><main>`;
   if(open.length){ h+=`<section><h2>Pick up where you stopped</h2>${open.map(s=>{ const t=testById(s.test), c=calcOf(s); return `<button class="row" data-act="open" data-id="${s.id}"><span class="row-main"><b>${t.name}</b><small>${fmtDate(s.date)} · ${c.doneCount} of ${t.cats.length} drills scored</small></span><span class="num">${isB(t)?`${c.errors}<small class="unit">err</small> ${c.total}`:c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section>`; }
   h+=`<section><h2>Start a test</h2>`;
   TESTS.forEach(t=>{
