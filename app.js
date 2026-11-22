@@ -486,7 +486,7 @@ function insightsBasis(t,done,any){
   return h;
 }
 function vZoom(){ const z=S.zoom;
-  return `<div class="zoomwrap" role="dialog" aria-modal="true" aria-label="Diagram full screen"><div class="zoombar"><button class="zb" data-act="zclose" aria-label="Close">&times;</button><span class="zk">${Math.round(z.k*100)}%</span><button class="zb" data-act="zminus" aria-label="Smaller"${z.k<=1?' disabled':''}>&minus;</button><button class="zb" data-act="zplus" aria-label="Bigger"${z.k>=4?' disabled':''}>+</button></div><div class="zoombody" id="zoombody"><div class="zoomin" style="width:${z.k*100}%">${drawDiagram(z.id,S.prefs.mirror)}</div></div></div>`;
+  return `<div class="zoomwrap" role="dialog" aria-modal="true" aria-label="Diagram full screen"><div class="zoombar"><button class="zb" data-act="zclose" aria-label="Close">&times;</button></div><div class="zoombody"><div class="zoomin">${drawDiagram(z.id,S.prefs.mirror)}</div></div></div>`;
 }
 function vSheet(){ const sh=S.sheet;
   if(sh.kind==='account'){
@@ -533,9 +533,6 @@ document.addEventListener('click',e=>{
   else if(a==='t-reset'){ const cid=testById(s.test).cats[v.ci].id; if(s.times) delete s.times[cid]; touch(s); render(true); }
   else if(a==='zoomfig'){ S.zoom={ id:b.dataset.d, k:1 }; render(true); }
   else if(a==='zclose'){ S.zoom=null; render(true); }
-  else if(a==='zplus'||a==='zminus'){ const bd=document.getElementById('zoombody'), fx=bd?(bd.scrollLeft+bd.clientWidth/2)/bd.scrollWidth:.5, fy=bd?(bd.scrollTop+bd.clientHeight/2)/bd.scrollHeight:.5;
-    S.zoom.k=Math.max(1,Math.min(4,S.zoom.k+(a==='zplus'?.5:-.5))); render(true);
-    const nb=document.getElementById('zoombody'); if(nb){ nb.scrollLeft=fx*nb.scrollWidth-nb.clientWidth/2; nb.scrollTop=fy*nb.scrollHeight-nb.clientHeight/2; } }
   else if(a==='mirror'){ S.prefs.mirror=!S.prefs.mirror; persist(); render(true); }
   else if(a==='list') go({ name:'session', id:v.id });
   else if(a==='prev'||a==='next'){ const t=testById(s.test), d=a==='next'?1:-1; let ci=v.ci, pi=(v.pi||0)+d;

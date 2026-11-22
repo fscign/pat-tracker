@@ -209,7 +209,7 @@ a.btn.primary{color:var(--accent-ink)}
 .zoombar .zk{flex:1;text-align:center;font-family:var(--display);font-weight:600;font-size:17px;font-variant-numeric:tabular-nums}
 .zb{width:48px;height:48px;border-radius:12px;border:1px solid #2a3a48;background:#13202b;color:#e8eef3;font-size:26px;line-height:1;padding:0}
 .zb:disabled{opacity:.35}
-.zoombody{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:8px 8px calc(16px + env(safe-area-inset-bottom));touch-action:pan-x pan-y pinch-zoom}
-.zoomin{margin:0 auto;max-width:none}
+.zoombody{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;-webkit-overflow-scrolling:touch;padding:8px 8px calc(16px + env(safe-area-inset-bottom));touch-action:pan-x pan-y pinch-zoom}
+.zoomin{margin:0 auto;width:100%;max-width:calc((100vh - 90px) * 0.555)}
 .zoomin .table{width:100%;height:auto;max-width:none;display:block;filter:none}
 @media (min-aspect-ratio:1/1){ .zoomin{width:auto} }
