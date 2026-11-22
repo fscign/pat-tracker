@@ -31,9 +31,12 @@ function drawDiagram(id, mirror){
       const p1=[b[0]-L*Math.cos(ang-w), b[1]-L*Math.sin(ang-w)], p2=[b[0]-L*Math.cos(ang+w), b[1]-L*Math.sin(ang+w)];
       o+=`<polygon points="${b[0].toFixed(1)},${b[1].toFixed(1)} ${p1[0].toFixed(1)},${p1[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" fill="${s[0]}"/>`; }
   });
+  const BS=9/11;
   (spec.balls||[]).forEach(b=>{
     const q=T(b.p), x=q[0].toFixed(1), y=q[1].toFixed(1);
-    if(b.t==='ghost'){ const r=b.small?7:11; o+=`<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" fill-opacity=".3" stroke="#fff" stroke-width="1.4" stroke-dasharray="3 2.5"/>`; return; }
+    const o0=o.length; drawBall(); o=o.slice(0,o0)+`<g transform="translate(${x} ${y}) scale(${BS.toFixed(4)}) translate(${-x} ${-y})">`+o.slice(o0)+'</g>';
+    function drawBall(){
+    if(b.t==='ghost'){ const r=b.small?7:10.3; o+=`<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" fill-opacity=".3" stroke="#fff" stroke-width="1.4" stroke-dasharray="3 2.5"/>`; return; }
     o+=`<ellipse cx="${(q[0]+2).toFixed(1)}" cy="${(q[1]+3).toFixed(1)}" rx="11" ry="10" fill="#000" fill-opacity=".22"/>`;
     if(b.t==='cue'){ o+=`<circle cx="${x}" cy="${y}" r="11" fill="#fdfdf8" stroke="#0a1620" stroke-opacity=".5" stroke-width="1"/>`; return; }
     if(!b.n){ o+=`<circle cx="${x}" cy="${y}" r="11" fill="#e4483b" stroke="#fff" stroke-opacity=".75" stroke-width="1"/><circle cx="${(q[0]-3.5).toFixed(1)}" cy="${(q[1]-3.5).toFixed(1)}" r="2.6" fill="#fff" fill-opacity=".55"/>`; return; }
@@ -43,6 +46,7 @@ function drawDiagram(id, mirror){
     } else o+=`<circle cx="${x}" cy="${y}" r="11" fill="${c}" stroke="#fff" stroke-opacity=".8" stroke-width="1"/>`;
     const dark=(b.n===1||b.n===5||b.n===9||b.n===13);
     o+=`<text x="${x}" y="${(q[1]+4.3).toFixed(1)}" class="dg-num" fill="${dark?'#111':'#fff'}"${b.n>9?' font-size="11"':''}>${b.n}</text>`;
+    }
   });
   (spec.notes||[]).forEach(n=>{ const q=T(n.p); o+=`<text x="${q[0].toFixed(1)}" y="${(q[1]+4).toFixed(1)}" class="dg-note${n.small?' sm':''}">${n.text}</text>`; });
   return `<svg class="table" viewBox="0 0 ${TW} ${TH}" role="img" aria-label="Table layout">${o}</svg>`;
