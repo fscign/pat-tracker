@@ -54,19 +54,19 @@ const DIAGRAMS = {
   p1_endless(){ return { balls:[ob(2,2,7),ob(4,2,9),ob(6,2,8), cue(2.2,2.65)] }; },
   p1_9ball(){ return { balls:[ob(5.9,W1,3),ob(.29,1,7),ob(7.7,1,2),ob(2,2,5),ob(4,2,4),cue(5,2),ob(.29,3,8),ob(3,3,6),ob(6.85,3,1),ob(7.7,3,9)] }; },
   p1_std1(){ return { balls:[ob(4,2,1), cue(7,.5), gh(7,3.5)], lines:[aimL([7,.5],[4.18,1.91]), pot([4,2],'BL'), {pts:[[7,3.5],[4.18,2.09]],k:'thin'}, {pts:[[4,2],AIM.TL],k:'obg',arrow:1}] }; },
-  p1_std2(){ const sp=y=>({p:[6,y],t:'ghost',small:1});
-    return { balls:[ob(2,2,1), cue(6,.77), sp(.11),sp(.33),sp(.55), gh(6,3.23), sp(3.45),sp(3.67),sp(3.89)],
-      lines:[aimL([6,.77],[2.2,1.95]), pot([2,2],'BL'), {pts:[[6,3.23],[2.2,2.05]],k:'thin'}, {pts:[[2,2],AIM.TL],k:'obg',arrow:1}],
-      notes:[{p:[6.45,.44],text:'3 balls',small:1},{p:[6.45,3.56],text:'3 balls',small:1}] }; },
-  p1_std3(){ const sp=(x,y)=>({p:[x,y],t:'ghost',small:1});
+  p1_std2(){ const sp=y=>({p:[6,y],t:'ghost'});
+    return { balls:[ob(2,2,1), cue(6,.55), sp(.11),sp(.33), gh(6,3.45), sp(3.67),sp(3.89)],
+      lines:[aimL([6,.55],[2.2,1.95]), pot([2,2],'BL'), {pts:[[6,3.45],[2.2,2.05]],k:'thin'}, {pts:[[2,2],AIM.TL],k:'obg',arrow:1}],
+      notes:[{p:[6.45,.33],text:'3rd ball',small:1},{p:[6.45,3.67],text:'3rd ball',small:1}] }; },
+  p1_std3(){ const sp=(x,y)=>({p:[x,y],t:'ghost'});
     return { balls:[ob(3,4-W1,1), sp(3,3.89), cue(7,1), gh(7,3), gh(3,W1), sp(3,.11)],
       lines:[aimL([7,1],[3.18,3.6]), pot([3,4-W1],'BL'), {pts:[[7,3],[3.18,.4]],k:'thin'}, {pts:[[3,W1],AIM.TL],k:'obg',arrow:1}],
       notes:[{p:[3.45,3.8],text:'1 ball',small:1},{p:[3.45,.2],text:'1 ball',small:1}] }; },
-  p1_std4(){ const sp=(x,y)=>({p:[x,y],t:'ghost',small:1});
+  p1_std4(){ const sp=(x,y)=>({p:[x,y],t:'ghost'});
     return { balls:[ob(4,1,1), cue(7,W1), sp(7,.11), gh(7,4-W1), sp(7,3.89), gh(4,3)],
       lines:[aimL([7,W1],[4.21,.97]), pot([4,1],'TL'), {pts:[[7,4-W1],[4.21,3.03]],k:'thin'}, {pts:[[4,3],AIM.BL],k:'obg',arrow:1}],
       notes:[{p:[7.45,.22],text:'1 ball',small:1},{p:[7.45,3.78],text:'1 ball',small:1}] }; },
-  p1_std5(){ const sp=(x,y)=>({p:[x,y],t:'ghost',small:1});
+  p1_std5(){ const sp=(x,y)=>({p:[x,y],t:'ghost'});
     return { balls:[ob(W1,3,1), sp(.11,3), cue(6,.55), sp(6,.11), sp(6,.33), gh(W1,1), sp(.11,1), gh(6,3.45), sp(6,3.67), sp(6,3.89)],
       lines:[aimL([6,.55],[W1+.2,2.95]), {pts:[[W1,3],AIM.BL],k:'ob',arrow:1}, {pts:[[6,3.45],[W1+.2,1.05]],k:'thin'}, {pts:[[W1,1],AIM.TL],k:'obg',arrow:1}],
       notes:[{p:[.72,3.1],text:'1 ball',small:1},{p:[.72,1.1],text:'1 ball',small:1},{p:[6.45,.33],text:'2 balls',small:1},{p:[6.45,3.67],text:'2 balls',small:1}] }; },
@@ -225,7 +225,7 @@ const TESTS = [
   { id:'c8', name:'Endless Position', target:4.5, factor:22.22, parts:[{ id:'a', title:'Endless Position Drill 1', diagram:'p1_endless', fields:inn(3,9), how:['The 7 on the foot spot, the 9 on the centre spot, the 8 on the head spot. Ball in hand to start.','Play 7, 8, 9 in order. Any pocket, but call it.','When all three are down, re-spot them and keep going from where the cue ball stopped.','Touching another ball or a scratch ends the inning. No banks or combinations. Capped at 9 balls per inning.'] }] },
   { id:'c9', name:'Standard Shots', target:2, factor:50, parts:[
     { id:'s1', label:'1', title:'Shot 1: centre spot to the corner', diagram:'p1_std1', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball on the centre spot, cue ball on the line from the far corner through the ball, so it is a straight shot into the opposite corner.','3 attempts. After a make, the next attempt is from the other side.','Only the pot counts here; where the cue ball goes, even a scratch, does not matter.'] },
-    { id:'s2', label:'2', title:'Shot 2: foot spot cut', diagram:'p1_std2', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball on the foot spot. Cue ball on the head string, three ball widths off the long rail.','Cut the ball into the far corner pocket on the other side.','3 attempts, changing sides after a make. Only the pot counts.'] },
+    { id:'s2', label:'2', title:'Shot 2: foot spot cut', diagram:'p1_std2', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball on the foot spot. Cue ball on the head string, the third ball out from the long rail.','Cut the ball into the far corner pocket on the other side.','3 attempts, changing sides after a make. Only the pot counts.'] },
     { id:'s3', label:'3', title:'Shot 3: ball off the long rail', diagram:'p1_std3', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball one ball off the long rail on the third-diamond line. Cue ball on the seventh-diamond line, one diamond off the opposite rail.','Pot it along the rail into the foot corner pocket.','3 attempts, changing sides after a make. Only the pot counts.'] },
     { id:'s4', label:'4', title:'Shot 4: side pocket line to the corner', diagram:'p1_std4', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball on the side pocket line, level with the first diamond. Cue ball near the head corner on the same side, one ball width off the long rail.','Pot it into the foot corner pocket on that side.','3 attempts, changing sides after a make. Only the pot counts.'] },
     { id:'s5', label:'5', title:'Shot 5: ball near the foot rail', diagram:'p1_std5', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball one ball width off the foot rail, one diamond in from the long rail. Cue ball on the head string, two ball widths off the opposite long rail.','Cut it into the near foot corner pocket.','3 attempts, changing sides after a make. Only the pot counts.'] } ] },
