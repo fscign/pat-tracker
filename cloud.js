@@ -18,7 +18,7 @@ if (window.Cloud.available) try {
 
   const docId = (uid, lid) => uid + '_' + lid;
   const toDoc = (uid, nick, s) => ({
-    owner: uid, ownerNick: nick, lid: s.id, test: s.test, date: s.date, created: s.created || 0, updatedAt: s.updatedAt || 0,
+    owner: uid, ownerNick: nick, ownerName: (window.Cloud.user && window.Cloud.user.name) || '', lid: s.id, test: s.test, date: s.date, created: s.created || 0, updatedAt: s.updatedAt || 0,
     scores: s.scores || {}, notes: s.notes || {}, times: s.times || {}, finished: !!s.finished,
     sharedWith: s.sharedWith || [], sharedNames: s.sharedNames || {},
   });
@@ -27,11 +27,12 @@ if (window.Cloud.available) try {
   async function loadProfile(u) {
     const snap = await F.getDoc(F.doc(db, 'users', u.uid));
     const p = snap.exists() ? snap.data() : {};
-    return { uid: u.uid, email: u.email, nick: p.nick || '' };
+    return { uid: u.uid, email: u.email, nick: p.nick || '', name: p.name || '' };
   }
 
   Object.assign(window.Cloud, {
-    async signUp(nick, email, password) {
+    async signUp(nick, email, password, name) {
+      name = (name || '').trim().slice(0, 60);
       nick = nick.trim(); const low = nick.toLowerCase();
       if (!NICK.test(low)) throw { code: 'pat/bad-nick' };
       const u = (await A.createUserWithEmailAndPassword(auth, email.trim(), password)).user;
@@ -41,9 +42,9 @@ if (window.Cloud.available) try {
       } catch (e) { await A.deleteUser(u).catch(() => {}); throw { code: 'pat/nick-taken' }; }
       const b = F.writeBatch(db);
       b.set(F.doc(db, 'emails', u.email.toLowerCase()), { uid: u.uid, nick });
-      b.set(F.doc(db, 'users', u.uid), { nick, email: u.email, created: Date.now() });
+      b.set(F.doc(db, 'users', u.uid), { nick, name, email: u.email, created: Date.now() });
       await b.commit();
-      window.Cloud.user = { uid: u.uid, email: u.email, nick }; emit();
+      window.Cloud.user = { uid: u.uid, email: u.email, nick, name }; emit();
     },
     signIn: (email, password) => A.signInWithEmailAndPassword(auth, email.trim(), password),
     reset: email => A.sendPasswordResetEmail(auth, email.trim()),
@@ -52,6 +53,11 @@ if (window.Cloud.available) try {
       const u = window.Cloud.user; if (!u) return [];
       const q = F.query(F.collection(db, 'sessions'), F.where('owner', '==', u.uid));
       return (await F.getDocs(q)).docs.map(fromDoc);
+    },
+    async setName(name) {
+      const u = window.Cloud.user; name = (name || '').trim().slice(0, 60);
+      await F.setDoc(F.doc(db, 'users', u.uid), { name }, { merge: true });
+      u.name = name;
     },
     async put(s) { const u = window.Cloud.user; await F.setDoc(F.doc(db, 'sessions', docId(u.uid, s.id)), toDoc(u.uid, u.nick, s)); },
     async del(lid) { const u = window.Cloud.user; await F.deleteDoc(F.doc(db, 'sessions', docId(u.uid, lid))); },
@@ -64,7 +70,7 @@ if (window.Cloud.available) try {
     async listShared() {
       const u = window.Cloud.user; if (!u) return [];
       const q = F.query(F.collection(db, 'sessions'), F.where('sharedWith', 'array-contains', u.uid));
-      return (await F.getDocs(q)).docs.map(d => { const x = d.data(); return { key: d.id, ownerNick: x.ownerNick || 'Someone', ...fromDoc(d) }; });
+      return (await F.getDocs(q)).docs.map(d => { const x = d.data(); return { key: d.id, ownerNick: x.ownerNick || 'Someone', ownerName: x.ownerName || '', ...fromDoc(d) }; });
     },
   });
 

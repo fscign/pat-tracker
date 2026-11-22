@@ -134,7 +134,8 @@ const authMsg=e=>{ const m={ 'auth/email-already-in-use':'There is already an ac
 
 
 /* ---------- Result as a picture ---------- */
-const picName=()=>S.prefs.picName!=null?S.prefs.picName:(me()&&me().nick)||'';
+const picName=()=>S.prefs.picName!=null?S.prefs.picName:(me()&&(me().name||me().nick))||'';
+const who=x=>x.ownerName?`${x.ownerName} (${x.ownerNick})`:x.ownerNick;
 async function resultPicture(s){
   const t=testById(s.test), c=calcOf(s), basis=isB(t);
   try{ await Promise.all(['700 64px "Barlow Condensed"','600 30px "Barlow Condensed"','500 28px Barlow','600 28px Barlow'].map(f=>document.fonts.load(f))); }catch(e){}
@@ -276,7 +277,7 @@ const catSub=c=>{ const k=c.cat.kind||'pat'; if(k==='errors') return c.cat.parts
 function vHome(){
   S.sessions=S.sessions.filter(s=>hasData(s)||Date.now()-s.created<5000||S.view.id===s.id);
   const open=S.sessions.filter(s=>hasData(s)&&!s.finished).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,3);
-  let h=`<header class="top home"><div><h1>Pool Progress</h1><p class="sub">Score a test, see where the points went.</p></div><div class="hbtns"><button class="sync info" data-act="about" aria-label="About this app">i</button>${C()?`<button class="sync" data-act="account">${me()?esc(me().nick||'Account'):'Sign in'}</button>`:''}<button class="sync" data-act="backup">Backup</button></div></header><main>`;
+  let h=`<header class="top home"><div><h1>Pool Progress</h1><p class="sub">Score a test, see where the points went.</p></div><div class="hbtns"><button class="sync info" data-act="about" aria-label="About this app">i</button>${C()?`<button class="sync" data-act="account">${me()?esc((me().name||'').split(' ')[0]||me().nick||'Account'):'Sign in'}</button>`:''}<button class="sync" data-act="backup">Backup</button></div></header><main>`;
   if(open.length){ h+=`<section><h2>Pick up where you stopped</h2>${open.map(s=>{ const t=testById(s.test), c=calcOf(s); return `<button class="row" data-act="open" data-id="${s.id}"><span class="row-main"><b>${t.name}</b><small>${fmtDate(s.date)} · ${c.doneCount} of ${t.cats.length} drills scored</small></span><span class="num">${isB(t)?`${c.errors}<small class="unit">err</small> ${c.total}`:c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section>`; }
   h+=`<section><h2>Start a test</h2>`;
   TESTS.forEach(t=>{
@@ -422,13 +423,13 @@ function vSharedList(){
   if(S.sharedState==='error'&&!S.shared) return `<p class="empty">Could not load shared tests. Check your connection and open this tab again.</p>`;
   const list=(S.shared||[]).filter(x=>testById(x.test)).sort((a,b)=>a.date<b.date?1:-1);
   if(!list.length) return `<p class="empty">Nobody has shared a test with you yet. Others can share with you using your email or your nickname, ${esc(me().nick||'')}.</p>`;
-  return `<section>${list.map(x=>{ const t=testById(x.test), c=sessionCalc(t,x.scores); return `<button class="row" data-act="openshared" data-key="${esc(x.key)}"><span class="tag">${t.name}</span><span class="row-main"><b>${esc(x.ownerNick)}</b><small>${fmtDate(x.date)}${c.complete?'':` · ${c.doneCount} of ${t.cats.length} drills`}</small></span><span class="num">${isB(t)?`${c.errors}<small class="unit">err</small> ${c.total}`:c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section><button class="btn ghost" data-act="reshared">Refresh</button>`;
+  return `<section>${list.map(x=>{ const t=testById(x.test), c=sessionCalc(t,x.scores); return `<button class="row" data-act="openshared" data-key="${esc(x.key)}"><span class="tag">${t.name}</span><span class="row-main"><b>${esc(who(x))}</b><small>${fmtDate(x.date)}${c.complete?'':` · ${c.doneCount} of ${t.cats.length} drills`}</small></span><span class="num">${isB(t)?`${c.errors}<small class="unit">err</small> ${c.total}`:c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section><button class="btn ghost" data-act="reshared">Refresh</button>`;
 }
 function vShared(){
   const x=(S.shared||[]).find(y=>y.key===S.view.key); if(!x) return topBar('Shared test',true)+`<main><p class="empty">This test is no longer shared with you.</p></main>`;
   const t=testById(x.test), c=sessionCalc(t,x.scores), tt=t.cats.filter(k=>k.timed).reduce((a,k)=>a+((x.times||{})[k.id]||0),0);
-  let h=topBar(`${t.name} · ${x.ownerNick}`,true)+'<main>';
-  h+=`<section class="card hero"><p class="eyebrow">${esc(x.ownerNick)} · ${fmtDate(x.date)}${c.complete?'':` · ${c.doneCount} of ${t.cats.length} drills`}</p>`;
+  let h=topBar(`${t.name} · ${x.ownerName||x.ownerNick}`,true)+'<main>';
+  h+=`<section class="card hero"><p class="eyebrow">${esc(who(x))} · ${fmtDate(x.date)}${c.complete?'':` · ${c.doneCount} of ${t.cats.length} drills`}</p>`;
   h+= isB(t) ? `<div class="duo"><div><span class="big">${c.errors}</span><span class="of">errors</span></div><div><span class="big">${c.total}</span><span class="of">ghost, of 150</span></div>${tt?`<div><span class="big sm">${fmtT(tt)}</span><span class="of">time, drills 1 to 6</span></div>`:''}</div>`
      : `<div class="hero-num"><span class="big">${c.total}</span><span class="of">${t.mode==='sum'?`of ${t.targetTotal} target`:'average percent'}</span></div>`;
   h+=`</section>`;
@@ -494,8 +495,8 @@ function vSheet(){ const sh=S.sheet;
     const u=me(), mode=u?'profile':(sh.mode||'signin'), busy=sh.busy?' disabled':'', err=sh.err?`<p class="err" role="alert">${esc(sh.err)}</p>`:'', ok=sh.ok?`<p class="okmsg">${esc(sh.ok)}</p>`:'';
     let b='';
     if(mode==='profile'){ const n=S.sessions.filter(hasData).length;
-      b=`<h3>${esc(u.nick||'Your account')}</h3><p class="fine">${esc(u.email)}</p><p>Your ${n} test${n===1?' is':'s are'} saved to your account. Others can share tests with you using your email or your nickname.</p><p class="fine" id="netstate">${netText()}</p><div class="actions"><button class="btn" data-act="signout"${busy}>Sign out</button><button class="btn ghost" data-act="cancel">Close</button></div>`; }
-    else if(mode==='signup') b=`<h3>Create account</h3><form class="form" data-form="signup"><label for="f-nick">Nickname</label><input id="f-nick" value="${esc((sh.vals||{})["f-nick"]||"")}" autocomplete="username" autocapitalize="off" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_.\\-]{3,20}"><label for="f-email">Email</label><input id="f-email" value="${esc((sh.vals||{})["f-email"]||"")}" type="email" autocomplete="email" required><label for="f-pass">Password</label><input id="f-pass" value="${esc((sh.vals||{})["f-pass"]||"")}" type="password" autocomplete="new-password" required minlength="6">${err}<button class="btn primary"${busy}>Create account</button></form><p class="fine">Already have an account? <button class="link" data-act="amode" data-mode="signin">Sign in</button></p>`;
+      b=`<h3>${esc(u.name||u.nick||'Your account')}</h3><p class="fine">${esc(u.nick)} · ${esc(u.email)}</p><form class="form" data-form="setname"><label for="f-name">Your name (shown to people you share with)</label><div class="inrow"><input id="f-name" value="${esc(u.name||'')}" autocomplete="name" maxlength="60" placeholder="e.g. Aleksandrs Horsuns"><button class="btn"${busy}>Save</button></div>${ok}${err}</form><p>Your ${n} test${n===1?' is':'s are'} saved to your account. Others can share tests with you using your email or your nickname.</p><p class="fine" id="netstate">${netText()}</p><div class="actions"><button class="btn" data-act="signout"${busy}>Sign out</button><button class="btn ghost" data-act="cancel">Close</button></div>`; }
+    else if(mode==='signup') b=`<h3>Create account</h3><form class="form" data-form="signup"><label for="f-nick">Nickname</label><input id="f-nick" value="${esc((sh.vals||{})["f-nick"]||"")}" autocomplete="username" autocapitalize="off" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_.\\-]{3,20}"><label for="f-name">Your name (shown to people you share with)</label><input id="f-name" value="${esc((sh.vals||{})["f-name"]||"")}" autocomplete="name" maxlength="60" placeholder="Optional"><label for="f-email">Email</label><input id="f-email" value="${esc((sh.vals||{})["f-email"]||"")}" type="email" autocomplete="email" required><label for="f-pass">Password</label><input id="f-pass" value="${esc((sh.vals||{})["f-pass"]||"")}" type="password" autocomplete="new-password" required minlength="6">${err}<button class="btn primary"${busy}>Create account</button></form><p class="fine">Already have an account? <button class="link" data-act="amode" data-mode="signin">Sign in</button></p>`;
     else if(mode==='reset') b=`<h3>Reset password</h3><form class="form" data-form="reset"><label for="f-email">Email</label><input id="f-email" value="${esc((sh.vals||{})["f-email"]||"")}" type="email" autocomplete="email" required>${err}${ok}<button class="btn primary"${busy}>Send reset email</button></form><p class="fine"><button class="link" data-act="amode" data-mode="signin">Back to sign in</button></p>`;
     else b=`<h3>Sign in</h3><form class="form" data-form="signin"><label for="f-email">Email</label><input id="f-email" value="${esc((sh.vals||{})["f-email"]||"")}" type="email" autocomplete="email" required><label for="f-pass">Password</label><input id="f-pass" value="${esc((sh.vals||{})["f-pass"]||"")}" type="password" autocomplete="current-password" required>${err}<button class="btn primary"${busy}>Sign in</button></form><p class="fine">New here? <button class="link" data-act="amode" data-mode="signup">Create an account</button> · <button class="link" data-act="amode" data-mode="reset">Forgot password</button></p><p class="fine">Tests already on this phone move into your account when you sign in.</p>`;
     return `<div class="scrim" data-act="cancel"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Account">${b}</div>`;
@@ -577,7 +578,8 @@ document.addEventListener('submit',async e=>{
   sh.vals=vals; sh.err=''; sh.ok=''; sh.busy=true; render(true);
   try{
     if(kind==='signin'){ await c.signIn(val('f-email'),val('f-pass')); S.sheet=null; toast('Signed in'); }
-    else if(kind==='signup'){ await c.signUp(val('f-nick'),val('f-email'),val('f-pass')); S.sheet=null; toast('Account created'); }
+    else if(kind==='signup'){ await c.signUp(val('f-nick'),val('f-email'),val('f-pass'),val('f-name')); S.sheet=null; toast('Account created'); }
+    else if(kind==='setname'){ await c.setName(val('f-name')); S.sessions.filter(hasData).forEach(s=>queueSync(s.id)); sh.ok='Name saved.'; }
     else if(kind==='reset'){ await c.reset(val('f-email')); sh.ok='If that email has an account, a reset link is on its way.'; }
     else if(kind==='share'){
       const q=val('f-share'), s=sess(S.view.id), who=await c.lookup(q);
