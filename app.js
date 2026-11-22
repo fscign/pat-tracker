@@ -23,10 +23,12 @@ function drawDiagram(id, mirror){
     o+=`<polygon points="${z.poly.map(pt).join(' ')}" fill="#fff" fill-opacity=".17" stroke="#fff" stroke-opacity=".8" stroke-width="1.4" stroke-dasharray="5 4"/>`;
     if(z.label){ const q=T(z.lp); o+=`<text x="${q[0].toFixed(1)}" y="${(q[1]+4).toFixed(1)}" class="dg-zone">${z.label}</text>`; }
   });
-  const ST={ ob:['#ffd66b',2.6,1,''], aim:['#ffffff',1.6,.85,''], cue:['#ffffff',2,.95,'6 5'], thin:['#ffffff',1.1,.5,''], obg:['#ffd66b',2,.55,'6 5'], range:['#ffffff',7,.3,''] };
+  const ST={ ob:['#ffd66b',2.6,1,''], aim:['#ffffff',1.6,.85,''], cue:['#ffffff',2,.95,'6 5'], thin:['#ffffff',1.1,.5,''], q:['#ffffff',1.6,.9,'3 3'], obg:['#ffd66b',2,.55,'6 5'], range:['#ffffff',7,.3,''] };
   (spec.lines||[]).forEach(l=>{
     const s=ST[l.k], P=l.pts.map(T);
     o+=`<polyline points="${P.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')}" fill="none" stroke="${s[0]}" stroke-width="${s[1]}" stroke-opacity="${s[2]}" stroke-linecap="round" stroke-linejoin="round"${s[3]?` stroke-dasharray="${s[3]}"`:''}/>`;
+    if(l.arrow2){ const a=P[1], b=P[0], ang=Math.atan2(b[1]-a[1],b[0]-a[0]), L=9, w=.45;
+      o+=`<polygon points="${b[0].toFixed(1)},${b[1].toFixed(1)} ${(b[0]-L*Math.cos(ang-w)).toFixed(1)},${(b[1]-L*Math.sin(ang-w)).toFixed(1)} ${(b[0]-L*Math.cos(ang+w)).toFixed(1)},${(b[1]-L*Math.sin(ang+w)).toFixed(1)}" fill="${s[0]}"/>`; }
     if(l.arrow){ const a=P[P.length-2], b=P[P.length-1], ang=Math.atan2(b[1]-a[1],b[0]-a[0]), L=11, w=.42;
       const p1=[b[0]-L*Math.cos(ang-w), b[1]-L*Math.sin(ang-w)], p2=[b[0]-L*Math.cos(ang+w), b[1]-L*Math.sin(ang+w)];
       o+=`<polygon points="${b[0].toFixed(1)},${b[1].toFixed(1)} ${p1[0].toFixed(1)},${p1[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" fill="${s[0]}"/>`; }
@@ -48,7 +50,7 @@ function drawDiagram(id, mirror){
     o+=`<text x="${x}" y="${(q[1]+4.3).toFixed(1)}" class="dg-num" fill="${dark?'#111':'#fff'}"${b.n>9?' font-size="11"':''}>${b.n}</text>`;
     }
   });
-  (spec.notes||[]).forEach(n=>{ const q=T(n.p); o+=`<text x="${q[0].toFixed(1)}" y="${(q[1]+4).toFixed(1)}" class="dg-note${n.small?' sm':''}">${n.text}</text>`; });
+  (spec.notes||[]).forEach(n=>{ const q=T(n.p); o+=`<text x="${q[0].toFixed(1)}" y="${(q[1]+4).toFixed(1)}" class="dg-note${n.small?' sm':''}${n.q?' q':''}">${n.text}</text>`; });
   return `<svg class="table" viewBox="0 0 ${TW} ${TH}" role="img" aria-label="Table layout">${o}</svg>`;
 }
 function tipSvg(tip, mirror){
@@ -329,8 +331,9 @@ function counter(key,val){
 function chips(key,f,val){
   if(f.counter) return counter(key,val);
   const vals=f.values||Array.from({length:f.max-f.min+1},(_,i)=>f.min+i);
+  const n=vals.length, cols=n<=11?n:Math.ceil(n/2);
   let o=''; for(const v of vals) o+=`<button class="chip${val===v?' on':''}" data-act="set" data-key="${key}" data-val="${v}" aria-pressed="${val===v}">${v}</button>`;
-  return `<div class="chips">${o}</div>`;
+  return `<div class="chips" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${o}</div>`;
 }
 function vDrill(){
   const s=sess(S.view.id), t=testById(s.test), ci=S.view.ci, cat=t.cats[ci], pi=Math.min(S.view.pi||0,cat.parts.length-1), part=cat.parts[pi];

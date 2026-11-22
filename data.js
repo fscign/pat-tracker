@@ -30,7 +30,7 @@ const DIAGRAMS = {
   },
   p1_draw(){
     const a=straightSet([[3,.2],[3,.46],[3,.72]],'TL',5,[1,2,3]), b=straightSet([[3,3.28],[3,3.54],[3,3.8]],'BL',5,[4,5,6]);
-    return { balls:[...a.balls,...b.balls], lines:[...a.lines,...b.lines, path([[3,.72],[8,1.4],[7.4,1.5]]), path([[3,3.28],[8,2.6],[7.4,2.5]])], zones:[rect(6,0,8,4,'Position zone',[7.2,2])] };
+    return { balls:[...a.balls,...b.balls], lines:[...a.lines,...b.lines], zones:[rect(6,0,8,4,'Position zone',[7.2,2])] };
   },
   p1_small1(){
     const b=[[4.5,.61],[4.28,.8],[4,.89],[3.72,.8],[3.5,.61]];
@@ -89,11 +89,11 @@ const DIAGRAMS = {
   },
   pat2_draw(){
     const a=straightSet([[2,.11],[2,.33],[2,.55]],'TL',5), b=straightSet([[1,3.5],[1,3.695],[1,3.89]],'BL',5);
-    return { balls:[...a.balls,...b.balls], lines:[...a.lines,...b.lines, path([[2,.55],[7.2,1.75]]), path([[1,3.5],[7.2,2.45]])], zones:[rect(6.5,0,8,4,'Position zone',[7.6,2])] };
+    return { balls:[...a.balls,...b.balls], lines:[...a.lines,...b.lines], zones:[rect(6.5,0,8,4,'Position zone',[7.6,2])] };
   },
   pat3_draw(){
     const a=straightSet([[4,.18],[4,.46],[4,.74]],'TL',7), b=straightSet([[4,3.26],[4,3.54],[4,3.82]],'BL',7);
-    return { balls:[...a.balls,...b.balls], lines:[...a.lines,...b.lines, path([[4,.74],[7.45,1.7]]), path([[4,3.26],[7.45,2.3]])], zones:[rect(6.5,0,8,4,'Position zone',[7.7,2])] };
+    return { balls:[...a.balls,...b.balls], lines:[...a.lines,...b.lines], zones:[rect(6.5,0,8,4,'Position zone',[7.7,2])] };
   },
   t_follow(){
     const a=straightSet([[4,.23],[4,.62],[4,1.0]],'TL',7), b=straightSet([[3,3.25],[3,3.53],[3,3.8]],'BL',7);
@@ -143,9 +143,9 @@ const DIAGRAMS = {
   pat2_9ball(){ return { balls:[ob(1.1,.15,3),ob(1.1,3.85,2),ob(.15,2,9),ob(2,2,5),ob(4,2,4),cue(5,2),ob(6,2,6),ob(8-F,1,7),ob(8-F,3,8),ob(7.1,3,1)] }; },
   std1(){ return { balls:[ob(2,W1-.1), cue(1,1)], lines:[aimL([1,1],[1.86,.34]), pot([2,.2],'TR'), path([[1.88,.3],[1.95,0],[4.76,4],[6.05,2.3]])], zones:[rect(5,1,7,3,'Position zone',[6,1.35])] }; },
   std2(){ return { balls:[ob(3,2,1), cue(4,2), ob(8-F,2,2), gh(7.6,3.4)], lines:[aimL([4,2],[3.2,2]), pot([3,2],'TL'), path([[3,2],[1.66,4],[0,2.33],[2.12,0],[6.8,4],[7.55,3.45]]), pot([8-F,2],'TR')], zones:[{poly:[[6.07,4],[8,2.1],[8,4]],label:'Position zone',lp:[7.9,3.0]}] }; },
-  std3(){ return { balls:[ob(2,2), cue(6,3.8), gh(6,3.0)], lines:[{pts:[[6,2.9],[6,3.9]],k:'range'}, aimL([6,3.8],[2.2,2.09]), pot([2,2],'TL'), path([[2.05,2.15],[1.75,3.2],[1.55,4],[1.9,2.6],[2.25,1.4]])], zones:[rect(.25,0,2.9,4,'Position zone',[.6,2.9])], notes:[{p:[.62,1.3],text:'no foot rail'}] }; },
-  std4(){ return { balls:[ob(3.85,3.75), cue(8-W1+.03,3.5)], lines:[aimL([7.73,3.5],[4.05,3.74]), pot([3.85,3.75],'BL')], zones:[rect(3.95,3,4.9,4,'Position zone',[4.42,2.82])] }; },
-  std5(){ return { balls:[ob(4,1), cue(6,1.2), gh(6,.5), gh(6,1.8)], lines:[{pts:[[6,.45],[6,1.85]],k:'range'}, aimL([6,1.2],[4.2,1.02]), pot([4,1],'TL'), path([[3.9,1.08],[2.2,1.35],[0,1.5],[6.05,2.2]])], zones:[rect(5,1.1,7.93,3.05,'Position zone',[6.6,2.75])], notes:[{p:[3.2,3.6],text:'no long rails'}] }; },
+  std3(){ return { balls:[ob(2,2), cue(6,3.75), gh(6,2.95)], lines:[{pts:[[6,3.6],[6,3.1]],k:'q',arrow:1,arrow2:1}, aimL([6,3.75],[2.17,2.09]), pot([2,2],'TL'), path([[2.05,2.15],[1.75,3.2],[1.55,4],[1.9,2.6],[2.25,1.4]])], zones:[rect(.25,0,2.9,4,'Position zone',[.6,2.9])], notes:[{p:[6.22,3.35],text:'?',q:1},{p:[.62,1.3],text:'no foot rail'}] }; },
+  std4(){ const o=[3.85,4-bw(1)], c=behind(o,'BL',8-bw(1)), g=behind(o,'BL',8-bw(0)); return { balls:[ob(o[0],o[1]), cue(c[0],c[1]), {p:g,t:'ghost'}], lines:[aimL(c,[o[0]+.17,o[1]]), pot(o,'BL')], zones:[rect(3.95,3,4.9,4,'Position zone',[4.42,2.82])] }; },
+  std5(){ return { balls:[ob(4,1), cue(6,1.2), gh(6,.5), gh(6,1.9)], lines:[{pts:[[6,.65],[6,1.75]],k:'q',arrow:1,arrow2:1}, aimL([6,1.2],[4.17,1.03]), pot([4,1],'TL'), path([[3.9,1.08],[2.2,1.35],[0,1.5],[6.05,2.4]])], zones:[rect(5,1.1,7.91,3.05,'Position zone',[6.6,2.75])], notes:[{p:[6.22,.85],text:'?',q:1},{p:[3.2,3.6],text:'no long rails'}] }; },
   pat3_angle1(){
     const b=[[4,2,3],[3.5,2,4],[3,2,5],[2.5,2,6],[2,2,7],[1.5,2,8],[1,2,9]];
     return { balls:b.map(v=>ob(v[0],v[1],v[2])).concat([cue(6,2)]), lines:b.map(v=>pot([v[0],v[1]], v[2]%2?'TL':'BL')) };
@@ -169,8 +169,9 @@ const DIAGRAMS = {
   pat3_9b4(){ return { balls:[ob(2,1,8),ob(6,1,3),ob(.13,2,9),ob(2,2,4),cue(4,2),ob(6,2,2),ob(8-F,2,5),ob(2,4-W1,7),ob(3,4-W1,6),ob(7,4-F,1)] }; },
   pat3_bank(){
     const xs=[.5,1.5,2.5,3.5];
-    return { balls:[...xs.map(x=>ob(x,W1)), ...xs.map(x=>ob(x,4-W1)), gh(.55,1.1), gh(1.5,1.65)],
-      lines:[aimL([.55,1.1],[.5,.5]), {pts:[[.5,W1],[.47,0],[.1,3.88]],k:'ob',arrow:1}, path([[.6,.6],[1.5,1.65]])] };
+    const sp=(x,y)=>({p:[x,y],t:'ghost'});
+    return { balls:[...xs.map(x=>ob(x,bw(1))), ...xs.map(x=>sp(x,bw(0))), ...xs.map(x=>ob(x,4-bw(1))), ...xs.map(x=>sp(x,4-bw(0))), cue(.62,1.1)],
+      lines:[aimL([.62,1.1],[.52,.44]), {pts:[[.5,bw(1)],[.36,F],[.09,3.88]],k:'ob',arrow:1}] };
   },
   pat3_rail5(){
     const b=[[1,F],[3,F],[5,F],[7,F],[1,4-F],[2,4-F],[3,4-F],[5,4-F],[6,4-F],[7,4-F],[F,1],[F,3],[8-F,1],[8-F,2],[8-F,3]];
