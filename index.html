@@ -294,7 +294,10 @@ const DIAGRAMS = {
     return { balls:[ob(4,1,1), cue(7,W1), sp(7,.11), gh(7,4-W1), sp(7,3.89), gh(4,3)],
       lines:[aimL([7,W1],[4.21,.97]), pot([4,1],'TL'), {pts:[[7,4-W1],[4.21,3.03]],k:'thin'}, {pts:[[4,3],AIM.BL],k:'obg',arrow:1}],
       notes:[{p:[7.45,.22],text:'1 ball',small:1},{p:[7.45,3.78],text:'1 ball',small:1}] }; },
-  p1_std5(){ return { balls:[ob(.45,3,1), cue(6.1,.55), gh(6.1,3.45), gh(.45,1)], lines:[aimL([6.1,.55],[.65,2.94]), {pts:[[.45,3],[.1,3.9]],k:'ob',arrow:1}, {pts:[[6.1,3.45],[.65,1.06]],k:'thin'}, {pts:[[.45,1],[.1,.1]],k:'obg',arrow:1}] }; },
+  p1_std5(){ const sp=(x,y)=>({p:[x,y],t:'ghost',small:1});
+    return { balls:[ob(W1,3,1), sp(.11,3), cue(6,.55), sp(6,.11), sp(6,.33), gh(W1,1), sp(.11,1), gh(6,3.45), sp(6,3.67), sp(6,3.89)],
+      lines:[aimL([6,.55],[W1+.2,2.95]), {pts:[[W1,3],AIM.BL],k:'ob',arrow:1}, {pts:[[6,3.45],[W1+.2,1.05]],k:'thin'}, {pts:[[W1,1],AIM.TL],k:'obg',arrow:1}],
+      notes:[{p:[.72,3.1],text:'1 ball',small:1},{p:[.72,1.1],text:'1 ball',small:1},{p:[6.45,.33],text:'2 balls',small:1},{p:[6.45,3.67],text:'2 balls',small:1}] }; },
   pat2_speed(){
     const ys=[.5,1.5,2.5,3.5];
     return { balls: ys.map((y,i)=>ob(6,y,i+1)),
@@ -453,7 +456,7 @@ const TESTS = [
     { id:'s2', label:'2', title:'Shot 2: foot spot cut', diagram:'p1_std2', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball on the foot spot. Cue ball on the head string, three ball widths off the long rail.','Cut the ball into the far corner pocket on the other side.','3 attempts, changing sides after a make. Only the pot counts.'] },
     { id:'s3', label:'3', title:'Shot 3: ball off the long rail', diagram:'p1_std3', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball one ball off the long rail on the third-diamond line. Cue ball on the seventh-diamond line, one diamond off the opposite rail.','Pot it along the rail into the foot corner pocket.','3 attempts, changing sides after a make. Only the pot counts.'] },
     { id:'s4', label:'4', title:'Shot 4: side pocket line to the corner', diagram:'p1_std4', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball on the side pocket line, level with the first diamond. Cue ball near the head corner on the same side, one ball width off the long rail.','Pot it into the foot corner pocket on that side.','3 attempts, changing sides after a make. Only the pot counts.'] },
-    { id:'s5', label:'5', title:'Shot 5: ball near the foot rail', diagram:'p1_std5', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball half a diamond off the foot rail, one diamond in from the long rail. Cue ball near the head string by the opposite long rail.','Cut it into the near foot corner pocket.','3 attempts, changing sides after a make. Only the pot counts.'] } ] },
+    { id:'s5', label:'5', title:'Shot 5: ball near the foot rail', diagram:'p1_std5', fields:[{ label:'Made out of 3', max:3, min:0 }], how:['Object ball one ball width off the foot rail, one diamond in from the long rail. Cue ball on the head string, two ball widths off the opposite long rail.','Cut it into the near foot corner pocket.','3 attempts, changing sides after a make. Only the pot counts.'] } ] },
   { id:'c10', name:'9-Ball Situation', target:4.5, factor:22.22, parts:[{ id:'a', title:'9-Ball Situation Drill', diagram:'p1_9ball', fields:inn(3,9), how:['Set up the layout and try to clear the table under full 9-ball rules. The cue ball may touch other balls.','Balls potted on a foul do not count. A combination on the 9 scores the full 9, and luck counts.','3 innings, each from the same layout. Mirror it if you are left-handed.','Score is balls legally potted, up to 9.'] }] },
 ]},
 { id:'pat2', name:'PAT 2', sub:'Playing Ability Test, level 2', mode:'sum', targetTotal:1000, cats:[
