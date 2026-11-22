@@ -281,11 +281,11 @@ const DIAGRAMS = {
   p1_frozen2(){ return { balls:[ob(1,F),ob(3,F),ob(5,F),ob(7,F),ob(F,2),ob(8-F,2),ob(1,4-F),ob(3,4-F),ob(5,4-F),ob(7,4-F), cue(3.9,1.1)] }; },
   p1_endless(){ return { balls:[ob(2,2,7),ob(4,2,9),ob(6,2,8), cue(2.2,2.65)] }; },
   p1_9ball(){ return { balls:[ob(5.9,W1,3),ob(.29,1,7),ob(7.7,1,2),ob(2,2,5),ob(4,2,4),cue(5,2),ob(.29,3,8),ob(3,3,6),ob(6.85,3,1),ob(7.7,3,9)] }; },
-  p1_std1(){ return { balls:[ob(4,2,1), cue(7,.5), gh(7,3.5)], lines:[{pts:[[7,.5],[4.18,1.91]],k:'aim'}, pot([4,2],'BL'), {pts:[[7,3.5],[4.18,2.09]],k:'thin'}] }; },
-  p1_std2(){ return { balls:[ob(2,2,1), cue(6,.45), gh(6,.22), gh(6,3.55), gh(6,3.78)], lines:[aimL([6,.45],[2.2,1.93]), pot([2,2],'BL'), {pts:[[6,3.55],[2.2,2.07]],k:'thin'}] }; },
-  p1_std3(){ return { balls:[ob(3,4-W1,1), cue(7,1), gh(7,3)], lines:[aimL([7,1],[3.18,3.6]), pot([3,4-W1],'BL'), {pts:[[7,3],[3.18,.4]],k:'thin'}] }; },
-  p1_std4(){ return { balls:[ob(4,1.1,1), cue(7,.4), gh(7,.22), gh(7,3.6)], lines:[aimL([7,.4],[4.2,1.04]), pot([4,1.1],'TL'), {pts:[[7,3.6],[4.2,2.96]],k:'thin'}] }; },
-  p1_std5(){ return { balls:[ob(.45,3,1), cue(6.1,.55), gh(6.1,.3), gh(6.1,3.45)], lines:[aimL([6.1,.55],[.65,2.94]), {pts:[[.45,3],[.1,3.9]],k:'ob',arrow:1}] }; },
+  p1_std1(){ return { balls:[ob(4,2,1), cue(7,.5), gh(7,3.5)], lines:[aimL([7,.5],[4.18,1.91]), pot([4,2],'BL'), {pts:[[7,3.5],[4.18,2.09]],k:'thin'}, {pts:[[4,2],AIM.TL],k:'obg',arrow:1}] }; },
+  p1_std2(){ return { balls:[ob(2,2,1), cue(6,.45), gh(6,.22), gh(6,3.55), gh(6,3.78)], lines:[aimL([6,.45],[2.2,1.93]), pot([2,2],'BL'), {pts:[[6,3.55],[2.2,2.07]],k:'thin'}, {pts:[[2,2],AIM.TL],k:'obg',arrow:1}] }; },
+  p1_std3(){ return { balls:[ob(3,4-W1,1), cue(7,1), gh(7,3), gh(3,W1)], lines:[aimL([7,1],[3.18,3.6]), pot([3,4-W1],'BL'), {pts:[[7,3],[3.18,.4]],k:'thin'}, {pts:[[3,W1],AIM.TL],k:'obg',arrow:1}] }; },
+  p1_std4(){ return { balls:[ob(4,1.1,1), cue(7,.4), gh(7,3.6), gh(4,2.9)], lines:[aimL([7,.4],[4.2,1.04]), pot([4,1.1],'TL'), {pts:[[7,3.6],[4.2,2.96]],k:'thin'}, {pts:[[4,2.9],AIM.BL],k:'obg',arrow:1}] }; },
+  p1_std5(){ return { balls:[ob(.45,3,1), cue(6.1,.55), gh(6.1,3.45), gh(.45,1)], lines:[aimL([6.1,.55],[.65,2.94]), {pts:[[.45,3],[.1,3.9]],k:'ob',arrow:1}, {pts:[[6.1,3.45],[.65,1.06]],k:'thin'}, {pts:[[.45,1],[.1,.1]],k:'obg',arrow:1}] }; },
   pat2_speed(){
     const ys=[.5,1.5,2.5,3.5];
     return { balls: ys.map((y,i)=>ob(6,y,i+1)),
@@ -569,7 +569,7 @@ function drawDiagram(id, mirror){
     o+=`<polygon points="${z.poly.map(pt).join(' ')}" fill="#fff" fill-opacity=".17" stroke="#fff" stroke-opacity=".8" stroke-width="1.4" stroke-dasharray="5 4"/>`;
     if(z.label){ const q=T(z.lp); o+=`<text x="${q[0].toFixed(1)}" y="${(q[1]+4).toFixed(1)}" class="dg-zone">${z.label}</text>`; }
   });
-  const ST={ ob:['#ffd66b',2.6,1,''], aim:['#ffffff',1.6,.85,''], cue:['#ffffff',2,.95,'6 5'], thin:['#ffffff',1.1,.5,''], range:['#ffffff',7,.3,''] };
+  const ST={ ob:['#ffd66b',2.6,1,''], aim:['#ffffff',1.6,.85,''], cue:['#ffffff',2,.95,'6 5'], thin:['#ffffff',1.1,.5,''], obg:['#ffd66b',2,.55,'6 5'], range:['#ffffff',7,.3,''] };
   (spec.lines||[]).forEach(l=>{
     const s=ST[l.k], P=l.pts.map(T);
     o+=`<polyline points="${P.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')}" fill="none" stroke="${s[0]}" stroke-width="${s[1]}" stroke-opacity="${s[2]}" stroke-linecap="round" stroke-linejoin="round"${s[3]?` stroke-dasharray="${s[3]}"`:''}/>`;

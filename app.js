@@ -23,7 +23,7 @@ function drawDiagram(id, mirror){
     o+=`<polygon points="${z.poly.map(pt).join(' ')}" fill="#fff" fill-opacity=".17" stroke="#fff" stroke-opacity=".8" stroke-width="1.4" stroke-dasharray="5 4"/>`;
     if(z.label){ const q=T(z.lp); o+=`<text x="${q[0].toFixed(1)}" y="${(q[1]+4).toFixed(1)}" class="dg-zone">${z.label}</text>`; }
   });
-  const ST={ ob:['#ffd66b',2.6,1,''], aim:['#ffffff',1.6,.85,''], cue:['#ffffff',2,.95,'6 5'], thin:['#ffffff',1.1,.5,''], range:['#ffffff',7,.3,''] };
+  const ST={ ob:['#ffd66b',2.6,1,''], aim:['#ffffff',1.6,.85,''], cue:['#ffffff',2,.95,'6 5'], thin:['#ffffff',1.1,.5,''], obg:['#ffd66b',2,.55,'6 5'], range:['#ffffff',7,.3,''] };
   (spec.lines||[]).forEach(l=>{
     const s=ST[l.k], P=l.pts.map(T);
     o+=`<polyline points="${P.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')}" fill="none" stroke="${s[0]}" stroke-width="${s[1]}" stroke-opacity="${s[2]}" stroke-linecap="round" stroke-linejoin="round"${s[3]?` stroke-dasharray="${s[3]}"`:''}/>`;
