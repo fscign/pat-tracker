@@ -277,7 +277,7 @@ const catSub=c=>{ const k=c.cat.kind||'pat'; if(k==='errors') return c.cat.parts
 function vHome(){
   S.sessions=S.sessions.filter(s=>hasData(s)||Date.now()-s.created<5000||S.view.id===s.id);
   const open=S.sessions.filter(s=>hasData(s)&&!s.finished).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,3);
-  let h=`<header class="top home"><div><h1>Pool Progress</h1><p class="sub">Score a test, see where the points went.</p></div><div class="hbtns"><button class="sync info" data-act="about" aria-label="About this app">i</button>${C()?`<button class="sync" data-act="account">${me()?esc((me().name||'').split(' ')[0]||me().nick||'Account'):'Sign in'}</button>`:''}<button class="sync" data-act="backup">Backup</button></div></header><main>`;
+  let h=`<header class="top home"><div><h1>Pool Progress</h1><p class="sub">Test, score, improve.</p></div><div class="hbtns"><button class="sync info" data-act="about" aria-label="About this app">i</button>${C()?`<button class="sync" data-act="account">${me()?esc((me().name||'').split(' ')[0]||me().nick||'Account'):'Sign in'}</button>`:''}<button class="sync" data-act="backup">Backup</button></div></header><main>`;
   if(open.length){ h+=`<section><h2>Pick up where you stopped</h2>${open.map(s=>{ const t=testById(s.test), c=calcOf(s); return `<button class="row" data-act="open" data-id="${s.id}"><span class="row-main"><b>${t.name}</b><small>${fmtDate(s.date)} · ${c.doneCount} of ${t.cats.length} drills scored</small></span><span class="num">${isB(t)?`${c.errors}<small class="unit">err</small> ${c.total}`:c.total}</span><span class="chev">&#8250;</span></button>`; }).join('')}</section>`; }
   h+=`<section><h2>Start a test</h2>`;
   TESTS.forEach(t=>{
