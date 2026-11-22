@@ -220,6 +220,18 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 .pic{width:100%;height:auto;border-radius:12px;border:1px solid var(--line);display:block;-webkit-touch-callout:default}
 a.btn{text-decoration:none;color:inherit}
 a.btn.primary{color:var(--accent-ink)}
+.figbtn{display:block;width:100%;max-width:330px;border:0;background:none;padding:0;position:relative;cursor:zoom-in}
+.figbtn .table{max-width:none}
+.zoomhint{position:absolute;right:8px;bottom:8px;font-size:11.5px;font-weight:600;color:#fff;background:rgba(5,15,22,.6);padding:3px 8px;border-radius:99px}
+.zoomwrap{position:fixed;inset:0;z-index:40;background:#05090c;display:flex;flex-direction:column}
+.zoombar{display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;color:#e8eef3}
+.zoombar .zk{flex:1;text-align:center;font-family:var(--display);font-weight:600;font-size:17px;font-variant-numeric:tabular-nums}
+.zb{width:48px;height:48px;border-radius:12px;border:1px solid #2a3a48;background:#13202b;color:#e8eef3;font-size:26px;line-height:1;padding:0}
+.zb:disabled{opacity:.35}
+.zoombody{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:8px 8px calc(16px + env(safe-area-inset-bottom));touch-action:pan-x pan-y pinch-zoom}
+.zoomin{margin:0 auto;max-width:none}
+.zoomin .table{width:100%;height:auto;max-width:none;display:block;filter:none}
+@media (min-aspect-ratio:1/1){ .zoomin{width:auto} }
 </style>
 </head>
 <body>
@@ -807,11 +819,11 @@ function trendChart(points, target, unit){
 
 /* ---------- Views ---------- */
 const app=document.getElementById('app');
-function go(v){ const cur=S.view; if(cur&&cur.name==='drill'){ const s0=sess(cur.id); if(s0&&s0.timer){ stopTimer(s0); touch(s0); } } S.view=v; S.sheet=null; if(['home','history','insights'].includes(v.name)){ const h='#'+v.name; if(location.hash!==h){ try{ history.replaceState(null,'',h); }catch(e){ location.hash=h; } } } render(); window.scrollTo(0,0); }
+function go(v){ const cur=S.view; if(cur&&cur.name==='drill'){ const s0=sess(cur.id); if(s0&&s0.timer){ stopTimer(s0); touch(s0); } } S.view=v; S.sheet=null; S.zoom=null; if(['home','history','insights'].includes(v.name)){ const h='#'+v.name; if(location.hash!==h){ try{ history.replaceState(null,'',h); }catch(e){ location.hash=h; } } } render(); window.scrollTo(0,0); }
 function render(keep){
   const y=window.scrollY, v=S.view;
   const html={ home:vHome, session:vSession, drill:vDrill, result:vResult, history:vHistory, insights:vInsights, shared:vShared }[v.name]();
-  app.innerHTML=html+(S.sheet?vSheet():'')+(S.toast?`<div class="toast" role="status">${esc(S.toast)}</div>`:'');
+  app.innerHTML=html+(S.sheet?vSheet():'')+(S.zoom?vZoom():'')+(S.toast?`<div class="toast" role="status">${esc(S.toast)}</div>`:'');
   if(keep){ window.scrollTo(0,y); requestAnimationFrame(()=>window.scrollTo(0,y)); }
 }
 function toast(t){ S.toast=t; render(true); clearTimeout(toast.t); toast.t=setTimeout(()=>{ S.toast=''; const el=document.querySelector('.toast'); if(el) el.remove(); },2200); }
@@ -893,7 +905,7 @@ function vDrill(){
   if(cat.parts.length>1) h+=`<div class="seg" role="tablist">${cat.parts.map((p,i)=>{ const filled=p.fields.every((f,k)=>typeof s.scores[cat.id+'.'+p.id+'.'+k]==='number'); return `<button role="tab" aria-selected="${i===pi}" class="${i===pi?'on':''}${filled?' filled':''}" data-act="part" data-pi="${i}">${p.label}</button>`; }).join('')}</div>`;
   h+=`<h2 class="part-title">${part.title}</h2>`;
   if(part.photo) h+=`<figure class="fig"><img class="photo" src="${part.photo}" width="720" height="960" alt="Set-up photo for ${esc(part.title)}" decoding="sync"></figure>`;
-  else if(part.diagram) h+=`<figure class="fig">${drawDiagram(part.diagram,mir)}<figcaption><button class="link" data-act="mirror">${mir?'Show original side':'Mirror layout'}</button></figcaption></figure>`;
+  else if(part.diagram) h+=`<figure class="fig"><button class="figbtn" data-act="zoomfig" data-d="${part.diagram}" aria-label="Open the diagram full screen">${drawDiagram(part.diagram,mir)}<span class="zoomhint">Tap to enlarge</span></button><figcaption><button class="link" data-act="mirror">${mir?'Show original side':'Mirror layout'}</button></figcaption></figure>`;
   else if(part.missing) h+=`<p class="missing">${part.missing}</p>`;
   h+=`<section class="card how">${part.tip?`<div class="tiprow">${tipSvg(part.tip,mir)}<span>Suggested tip position from the book</span></div>`:''}<ul>${part.how.map(x=>`<li>${x}</li>`).join('')}</ul></section>`;
   if(cat.timed){ const on=s.timer&&s.timer.cat===cat.id, tm=tOf(s,cat.id);
@@ -1040,6 +1052,9 @@ function insightsBasis(t,done,any){
   h+=`<section class="card"><h3>Every drill</h3><div class="tbl"><div class="tr th"><span>Drill</span><span>Last</span><span>Best</span><span>Trend</span></div>${rows.map(r=>`<div class="tr"><span>${r.i+1}. ${r.cat.name}</span><span class="num ${r.last!=null?bandK(t,r.cat,r.last):'dim'}">${r.last==null?'&middot;':r.last}</span><span class="num">${r.best==null?'&middot;':r.best}</span><span>${spark(r.v.slice(-8),64,22)}</span></div>`).join('')}</div><p class="fine">Best means fewest errors for drills 1 to 6.</p></section>`;
   return h;
 }
+function vZoom(){ const z=S.zoom;
+  return `<div class="zoomwrap" role="dialog" aria-modal="true" aria-label="Diagram full screen"><div class="zoombar"><button class="zb" data-act="zclose" aria-label="Close">&times;</button><span class="zk">${Math.round(z.k*100)}%</span><button class="zb" data-act="zminus" aria-label="Smaller"${z.k<=1?' disabled':''}>&minus;</button><button class="zb" data-act="zplus" aria-label="Bigger"${z.k>=4?' disabled':''}>+</button></div><div class="zoombody" id="zoombody"><div class="zoomin" style="width:${z.k*100}%">${drawDiagram(z.id,S.prefs.mirror)}</div></div></div>`;
+}
 function vSheet(){ const sh=S.sheet;
   if(sh.kind==='account'){
     const u=me(), mode=u?'profile':(sh.mode||'signin'), busy=sh.busy?' disabled':'', err=sh.err?`<p class="err" role="alert">${esc(sh.err)}</p>`:'', ok=sh.ok?`<p class="okmsg">${esc(sh.ok)}</p>`:'';
@@ -1083,6 +1098,11 @@ document.addEventListener('click',e=>{
   else if(a==='t-start'){ const cid=testById(s.test).cats[v.ci].id; stopTimer(s); s.timer={ cat:cid, start:Date.now() }; touch(s); render(true); }
   else if(a==='t-stop'){ stopTimer(s); touch(s); render(true); }
   else if(a==='t-reset'){ const cid=testById(s.test).cats[v.ci].id; if(s.times) delete s.times[cid]; touch(s); render(true); }
+  else if(a==='zoomfig'){ S.zoom={ id:b.dataset.d, k:1 }; render(true); }
+  else if(a==='zclose'){ S.zoom=null; render(true); }
+  else if(a==='zplus'||a==='zminus'){ const bd=document.getElementById('zoombody'), fx=bd?(bd.scrollLeft+bd.clientWidth/2)/bd.scrollWidth:.5, fy=bd?(bd.scrollTop+bd.clientHeight/2)/bd.scrollHeight:.5;
+    S.zoom.k=Math.max(1,Math.min(4,S.zoom.k+(a==='zplus'?.5:-.5))); render(true);
+    const nb=document.getElementById('zoombody'); if(nb){ nb.scrollLeft=fx*nb.scrollWidth-nb.clientWidth/2; nb.scrollTop=fy*nb.scrollHeight-nb.clientHeight/2; } }
   else if(a==='mirror'){ S.prefs.mirror=!S.prefs.mirror; persist(); render(true); }
   else if(a==='list') go({ name:'session', id:v.id });
   else if(a==='prev'||a==='next'){ const t=testById(s.test), d=a==='next'?1:-1; let ci=v.ci, pi=(v.pi||0)+d;
@@ -1146,6 +1166,8 @@ if(!S.prefs.migWarmup){ S.sessions.forEach(s=>{ if(s.test==='basis'&&typeof s.sc
 render();
 if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&S.zoom){ S.zoom=null; render(true); } });
 </script>
 <script type="module" src="cloud.js"></script>
 </body>
