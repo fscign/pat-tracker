@@ -291,6 +291,83 @@ const TESTS = [
 ]},
 ];
 
+
+/* ---------- Games (PAT 1 book, training games) ---------- */
+const EO_DEG=[
+  { n:'Beginner', fails:2, goal:120, max:150, rack:15 },
+  { n:'Intermediate', fails:1, goal:120, max:150, rack:15 },
+  { n:'Advanced', fails:0, goal:120, max:150, rack:15 },
+  { n:'Pro', fails:0, goal:170, max:200, rack:20 },
+  { n:'World Star', fails:0, goal:280, max:300, rack:30 },
+];
+const BOWL_VER=['Original','8-Ball version','Rotation version'];
+const XB_FAULTS=[null,{k:'M',n:'Missed shot'},{k:'eM',n:'Easy miss'},{k:'hM',n:'Hard miss'},{k:'bP',n:'Bad position'},{k:'F',n:'Foul'}];
+TESTS.push(
+  { id:'eo', name:'Equal Offense', short:'Eq. Offense', sub:'Straight pool practice game, 10 racks', game:'eo', cats:[], how:[
+    'Rack all 15 balls and break from behind the head string. Balls potted on the break go back on the table; the break shot itself does not count.',
+    'Each rack starts with ball in hand (Beginner to Advanced). At Pro and World Star you play real straight pool from behind the head string.',
+    'Call every shot. Try to pot all 15 balls in one inning; every ball counts 1 point.',
+    'After a foul or a miss you play on from where the balls lie. A scratch is a foul and you continue with ball in hand.',
+    'Misses allowed per rack: 2 for Beginner, 1 for Intermediate, none from Advanced up. Once you are past that, the rack is over.',
+    'Pro and World Star: aim for a run of 20 or 30 balls per rack, not more.',
+    'A game is 10 racks. Move up a level after reaching the goal twice in a row.'] },
+  { id:'bowl', name:'Bowliards', short:'Bowliards', sub:'10 frames scored like bowling, max 300', game:'bowl', cats:[], how:[
+    'Ten balls per rack (frame). After the break you start with ball in hand behind the head string.',
+    'You get two innings per frame. Note the balls potted in the first inning; the second inning continues from where the balls lie.',
+    'All 10 balls in the first inning is a strike: the next two innings are added to that frame.',
+    'All 10 balls with the second inning is a spare: the next inning is added to that frame.',
+    'Tenth frame: after a strike you get two more innings, after a spare one more. A perfect game is 300.',
+    'Choose the version you played (Original, 8-Ball or Rotation). The scoring is the same; it is saved with the game.'] },
+  { id:'xball', name:'Progressive X-Ball', short:'X-Ball', sub:'Run-outs against yourself, the number of balls adapts', game:'xball', cats:[], how:[
+    '9-ball rules. Start with a set number of balls, for example 9. Open break, then try to run the table.',
+    'Every rack starts with a new break and ball in hand.',
+    'Run out and you win the rack: +1. Fail and you lose it: −1. You start at 0.',
+    'Reach +10 and the next game is played with one more ball. Reach −10 and the next game is played with one ball less.',
+    'For a lost rack, note which ball you missed and why (missed shot, easy miss, hard miss, bad position, foul).'] }
+);
+const isGame=t=>!!(t&&t.game);
+function gameCalc(test, sc){
+  const base={ cats:[], doneCount:0, startedCount:0, complete:false, total:0, maxTotal:0 };
+  if(test.game==='eo'){
+    const deg=Math.min(5,Math.max(1,sc['meta.deg']||1)), D=EO_DEG[deg-1];
+    const vals=Array.from({length:10},(_,i)=>sc['r'+i]), got=vals.filter(v=>typeof v==='number');
+    const total=got.reduce((a,b)=>a+b,0), complete=got.length===10;
+    return { ...base, kind:'eo', deg, D, vals, total, maxTotal:D.max, complete, doneCount:got.length, startedCount:got.length, reached:complete&&total>=D.goal };
+  }
+  if(test.game==='bowl'){
+    const F=Array.from({length:10},(_,i)=>({ a:sc['f'+i+'a'], b:sc['f'+i+'b'], c:i===9?sc['f9c']:undefined }));
+    const num=v=>typeof v==='number';
+    const rolls=[], start=[];
+    for(let i=0;i<10;i++){ const f=F[i]; start.push(rolls.length); if(!num(f.a)) break;
+      if(i<9){ if(f.a===10){ rolls.push(10); continue; } rolls.push(f.a); if(!num(f.b)) break; rolls.push(f.b); }
+      else { rolls.push(f.a); if(num(f.b)) rolls.push(f.b); if(num(f.c)) rolls.push(f.c); } }
+    const tenthDone=(f=>num(f.a)&&num(f.b)&&((f.a===10||f.a+f.b===10)?num(f.c):true))(F[9]);
+    const cum=[]; let run=0, ok=true;
+    for(let i=0;i<10;i++){
+      if(!ok||start[i]==null||rolls[start[i]]==null){ cum.push(null); ok=false; continue; }
+      const s=start[i], r=k=>rolls[s+k];
+      let v=null;
+      if(i<9){ if(r(0)===10){ if(r(1)!=null&&r(2)!=null) v=10+r(1)+r(2); }
+               else if(r(1)!=null){ if(r(0)+r(1)===10){ if(r(2)!=null) v=10+r(2); } else v=r(0)+r(1); } }
+      else if(tenthDone){ const f=F[9]; v=f.a+f.b+(num(f.c)?f.c:0); }
+      if(v==null){ cum.push(null); ok=false; continue; }
+      run+=v; cum.push(run);
+    }
+    const doneFrames=F.filter((f,i)=>i<9?(f.a===10||num(f.b)):tenthDone).length;
+    const last=cum.filter(v=>v!=null).pop();
+    return { ...base, kind:'bowl', F, cum, total:last||0, maxTotal:300, complete:tenthDone&&cum[9]!=null, doneCount:doneFrames, startedCount:F.filter(f=>num(f.a)).length,
+      strikes:F.filter((f,i)=>f.a===10).length, spares:F.filter(f=>f.a!==10&&num(f.b)&&f.a+f.b===10).length, ver:Math.min(2,Math.max(0,sc['meta.ver']||0)) };
+  }
+  if(test.game==='xball'){
+    const n=Math.min(15,Math.max(2,sc['meta.n']||9)), racks=[]; let score=0, end=null;
+    for(let i=0;i<200;i++){ const v=sc['x'+i]; if(typeof v!=='number') break; const win=v===100; score+=win?1:-1;
+      racks.push({ i, win, ball:win?null:(v||null), fault:sc['xf'+i]||0, score }); if(score>=10){ end='up'; break; } if(score<=-10){ end='down'; break; } }
+    return { ...base, kind:'xball', n, racks, score, end, total:score, complete:!!end, doneCount:racks.length, startedCount:racks.length,
+      wins:racks.filter(r=>r.win).length, next:end==='up'?Math.min(15,n+1):end==='down'?Math.max(2,n-1):n };
+  }
+  return base;
+}
+
 /* ---------- Scoring (pure) ---------- */
 function fieldKeys(cat){ const k=[]; cat.parts.forEach(p=>p.fields.forEach((f,i)=>k.push({ key:cat.id+'.'+p.id+'.'+i, f, part:p }))); return k; }
 function catCap(cat){ const k=fieldKeys(cat); return k.reduce((s,x)=>s+x.f.max,0)/k.length; }
@@ -312,6 +389,7 @@ function catCalc(cat, scores){
   return { n, entered, complete, sum, avg, pts, max:catMaxPts(cat), kind };
 }
 function sessionCalc(test, scores){
+  if(test.game) return gameCalc(test, scores);
   const cats=test.cats.map(c=>({ cat:c, ...catCalc(c,scores) }));
   const done=cats.filter(c=>c.complete), started=cats.filter(c=>c.entered>0);
   if(test.mode==='basis'){
@@ -324,4 +402,4 @@ function sessionCalc(test, scores){
   const maxTotal = test.mode==='sum' ? test.cats.reduce((s,c)=>s+catMaxPts(c),0) : 100;
   return { cats, total, maxTotal, doneCount:done.length, startedCount:started.length, complete:done.length===test.cats.length };
 }
-if (typeof module!=='undefined') module.exports={ TESTS, DIAGRAMS, catCalc, sessionCalc, catMaxPts, fieldKeys };
+if (typeof module!=='undefined') module.exports={ TESTS, DIAGRAMS, catCalc, sessionCalc, catMaxPts, fieldKeys, gameCalc, EO_DEG };
