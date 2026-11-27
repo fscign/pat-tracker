@@ -67,6 +67,16 @@ const DIAGRAMS = {
   p1_std5(){ const sp=(x,y)=>({p:[x,y],t:'ghost'});
     return { balls:[ob(bw(1),3,1), sp(bw(0),3), cue(6,bw(2)), sp(6,bw(0)), sp(6,bw(1)), gh(bw(1),1), sp(bw(0),1), gh(6,4-bw(2)), sp(6,4-bw(1)), sp(6,4-bw(0))],
       lines:[aimL([6,bw(2)],[bw(1)+.16,2.95]), {pts:[[bw(1),3],AIM.BL],k:'ob',arrow:1}, {pts:[[6,4-bw(2)],[bw(1)+.16,1.05]],k:'thin'}, {pts:[[bw(1),1],AIM.TL],k:'obg',arrow:1}] }; },
+  pat3_large5(){
+    const g=(2-HB)/6, odd=[1,3,5,7,9,11,13,15].map((n,i)=>ob(2,2+(i-1)*g,n)), even=[2,4,6,8,10,12,14].map((n,i)=>ob(6,2-i*g,n));
+    return { balls:[...odd,...even, cue(2,1), gh(5.45,3.1)],
+      lines:[aimL([2,1],[1.97,2-g-.17]), pot([2,2-g],'BL'), path([[2.03,2-g-.12],[5.45,3.1]]), {pts:[[6,2],AIM.TR],k:'obg',arrow:1}] };
+  },
+  pat3_large6(){
+    const g=(2-HB)/6, left=[15,13,11,9,7,5,3,1].map((n,i)=>ob(HB+i*g,2,n)), right=[2,4,6,8,10,12,14].map((n,i)=>ob(6+i*g,2,n));
+    return { balls:[...left,...right, cue(2.66,1.3), gh(5.68,3.0)],
+      lines:[aimL([2.66,1.3],[2+g+.1,1.86]), pot([2+g,2],'BL'), path([[2+g+.12,1.95],[5.68,3.0]]), {pts:[[6,2],AIM.TR],k:'obg',arrow:1}] };
+  },
   pat2_speed(){
     const ys=[.5,1.5,2.5,3.5];
     return { balls: ys.map((y,i)=>ob(6,y,i+1)),
@@ -254,8 +264,8 @@ const TESTS = [
     { id:'a', label:'3a', title:'Small Area Position Drill 5', diagram:'pat3_small5', fields:inn(3,15), how:['Fifteen balls in an L: eight toward the foot rail, seven in a column one ball beyond the foot string. Ball in hand to start.','Play them in order along the L, starting nearest the foot rail, all into the one corner pocket shown.','Touching any other ball or scratching ends the inning and that ball does not count. No banks.','Score is balls potted, up to 15.'] },
     { id:'b', label:'3b', title:'Small Area Position Drill 6', diagram:'pat3_small6', fields:inn(3,15), how:['Fifteen balls in one row across the table. Put the 8 in the middle, solids one side, stripes the other. Ball in hand to start.','Work along the row in order. Either far corner pocket, any time.','Touching any other ball or scratching ends the inning and that ball does not count. No banks.','Score is balls potted, up to 15.'] } ] },
   { id:'c4', name:'Large Area Position', target:10, factor:10, parts:[
-    { id:'a', label:'4a', title:'Large Area Position Drill 5', diagram:null, missing:'The pages for this drill (PAT 3, pages 16 to 21) were not in the scanned file. Set it up from the book. Scoring here works as normal.', fields:inn(3,15), how:['Score is balls potted per inning, up to 15.'] },
-    { id:'b', label:'4b', title:'Large Area Position Drill 6', diagram:null, missing:'The pages for this drill (PAT 3, pages 16 to 21) were not in the scanned file. Set it up from the book. Scoring here works as normal.', fields:inn(3,15), how:['Score is balls potted per inning, up to 15.'] } ] },
+    { id:'a', label:'4a', title:'Large Area Position Drill 5', diagram:'pat3_large5', fields:inn(3,15), how:['The 3 on the foot spot with the 1 just above it; the 2 on the head spot. The 14 and 15 sit half a ball off the long rails; the others are evenly spaced between, as drawn.','Ball in hand. Play them in numerical order: odd balls only into the foot corner pocket shown, even balls only into the head corner pocket shown.','Touching another object ball or a scratch ends the inning and that ball does not count. No banks, combinations or kisses; kicks and jumps are allowed.','Score is balls potted, up to 15.'] },
+    { id:'b', label:'4b', title:'Large Area Position Drill 6', diagram:'pat3_large6', fields:inn(3,15), how:['All balls on the centre line: the 3 on the foot spot with the 1 just past it toward the middle, the 2 on the head spot. The 14 and 15 sit half a ball off their short rails; the others are evenly spaced, as drawn.','Ball in hand. Play them in numerical order. On each half of the table either corner pocket may be used.','Touching another object ball or a scratch ends the inning and that ball does not count. No banks, combinations or kisses; kicks and jumps are allowed.','Score is balls potted, up to 15.'] } ] },
   { id:'c5', name:'Angle Shots', target:3, factor:33.33, parts:[
     { id:'a', label:'5a', title:'Angle Shot Drill 1', diagram:'pat3_angle1', fields:inn(3,7), how:['Balls 3 to 9 on the centre line, half a diamond apart, from the centre spot toward the foot rail. Cue ball on the head spot for every shot.','Start with the 3 and go up in order. Odd balls to one corner, even balls to the other, as drawn.','A miss ends the inning. The next inning starts on the ball you missed, and balls are re-spotted so 7 is always possible.','Touching another ball and scratching are each tolerated once. Score is balls potted, up to 7.'] },
     { id:'b', label:'5b', title:'Angle Shot Drill 2', diagram:'pat3_angle2', fields:inn(3,4), how:['Four balls on the diamond crossings shown. For each one the cue ball sits frozen on the long rail at its matching spot.','Start with the 1. Each ball goes to the corner drawn.','A miss ends the inning. The next inning starts on the missed ball, with re-spots so 4 is always possible.','Touching another ball and scratching are each tolerated once. Score is balls potted, up to 4.'] } ] },
